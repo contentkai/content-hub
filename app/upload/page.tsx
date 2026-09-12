@@ -4,13 +4,16 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 
 type Photo = {
-  id: string;
+  id: number;
   storage_path: string;
   public_url: string;
+  source: string | null;
+  analysis: Record<string, unknown> | null;
 };
 
 export default function UploadPage() {
   const [file, setFile] = useState<File | null>(null);
+  const [source, setSource] = useState<"existing_feed" | "new_candidate">("existing_feed");
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
   const [photos, setPhotos] = useState<Photo[]>([]);
@@ -52,10 +55,15 @@ export default function UploadPage() {
       .from("photos")
       .getPublicUrl(storagePath);
 
-    const { error: insertError } = await supabase.from("photos").insert({
-      storage_path: storagePath,
-      public_url: publicUrlData.publicUrl,
-    });
+    const { data: insertData, error: insertError } = await supabase
+      .from("photos")
+      .insert({
+        storage_path: storagePath,
+        public_url: publicUrlData.publicUrl,
+        source,
+      })
+      .select()
+      .single();
 
     if (insertError) {
       setError(insertError.message);
@@ -63,9 +71,33 @@ export default function UploadPage() {
       return;
     }
 
+    await loadPhotos();
     setFile(null);
     setUploading(false);
-    await loadPhotos();
+
+    // Fire off vision analysis and backfill it once it comes back.
+    const formData = new FormData();
+    formData.append("image", file);
+
+    try {
+      const res = await fetch("/api/analyze-image", {
+        method: "POST",
+        body: formData,
+      });
+      const data = await res.json();
+      if (res.ok) {
+        let analysis: Record<string, unknown>;
+        try {
+          analysis = JSON.parse(data.result);
+        } catch {
+          analysis = { error: "invalid JSON from model", raw: data.result };
+        }
+        await supabase.from("photos").update({ analysis }).eq("id", insertData.id);
+        await loadPhotos();
+      }
+    } catch (err) {
+      setError(String(err));
+    }
   }
 
   return (
@@ -76,22 +108,49 @@ export default function UploadPage() {
         accept="image/*"
         onChange={(e) => setFile(e.target.files?.[0] ?? null)}
       />
+      <div>
+        <label>
+          <input
+            type="radio"
+            name="source"
+            value="existing_feed"
+            checked={source === "existing_feed"}
+            onChange={() => setSource("existing_feed")}
+          />
+          Existing feed photo
+        </label>
+        <label>
+          <input
+            type="radio"
+            name="source"
+            value="new_candidate"
+            checked={source === "new_candidate"}
+            onChange={() => setSource("new_candidate")}
+          />
+          New candidate photo
+        </label>
+      </div>
       <button onClick={handleUpload} disabled={!file || uploading}>
         {uploading ? "Uploading..." : "Upload"}
       </button>
       {error && <p>Error: {error}</p>}
 
       <h2>Stored Photos</h2>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, 120px)", gap: "8px" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, 200px)", gap: "16px" }}>
         {photos.map((photo) => (
-          <img
-            key={photo.id}
-            src={photo.public_url}
-            alt={photo.storage_path}
-            width={120}
-            height={120}
-            style={{ objectFit: "cover" }}
-          />
+          <div key={photo.id}>
+            <img
+              src={photo.public_url}
+              alt={photo.storage_path}
+              width={200}
+              height={200}
+              style={{ objectFit: "cover" }}
+            />
+            <p>source: {photo.source ?? "(none)"}</p>
+            <pre style={{ whiteSpace: "pre-wrap", fontSize: "10px" }}>
+              {photo.analysis ? JSON.stringify(photo.analysis, null, 2) : "(no analysis yet)"}
+            </pre>
+          </div>
         ))}
       </div>
     </div>
