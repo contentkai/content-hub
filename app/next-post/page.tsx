@@ -60,12 +60,27 @@ export default function NextPostPage() {
 
     const aestheticProfile = profileRows?.[0]?.summary ?? null;
 
+    const { data: recentPosts, error: recentError } = await supabase
+      .from("photos")
+      .select("id, grid_position, analysis")
+      .eq("source", "existing_feed")
+      .not("grid_position", "is", null)
+      .order("grid_position", { ascending: true })
+      .limit(3);
+
+    if (recentError) {
+      setError(recentError.message);
+      setLoading(false);
+      return;
+    }
+
     const res = await fetch("/api/next-post", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         candidates: candidates.map((c) => ({ id: c.id, analysis: c.analysis })),
         aestheticProfile,
+        recentPosts,
       }),
     });
     const data = await res.json();
