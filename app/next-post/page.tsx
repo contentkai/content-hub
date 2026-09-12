@@ -62,10 +62,9 @@ export default function NextPostPage() {
 
     const { data: recentPosts, error: recentError } = await supabase
       .from("photos")
-      .select("id, grid_position, analysis")
+      .select("id, created_at, analysis")
       .eq("source", "existing_feed")
-      .not("grid_position", "is", null)
-      .order("grid_position", { ascending: true })
+      .order("created_at", { ascending: false })
       .limit(3);
 
     if (recentError) {

@@ -9,13 +9,11 @@ type Photo = {
   public_url: string;
   source: string | null;
   analysis: Record<string, unknown> | null;
-  grid_position: number | null;
 };
 
 export default function UploadPage() {
   const [file, setFile] = useState<File | null>(null);
   const [source, setSource] = useState<"existing_feed" | "new_candidate">("existing_feed");
-  const [gridPosition, setGridPosition] = useState("");
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
   const [photos, setPhotos] = useState<Photo[]>([]);
@@ -63,8 +61,6 @@ export default function UploadPage() {
         storage_path: storagePath,
         public_url: publicUrlData.publicUrl,
         source,
-        grid_position:
-          source === "existing_feed" && gridPosition !== "" ? Number(gridPosition) : null,
       })
       .select()
       .single();
@@ -77,7 +73,6 @@ export default function UploadPage() {
 
     await loadPhotos();
     setFile(null);
-    setGridPosition("");
     setUploading(false);
 
     // Fire off vision analysis and backfill it once it comes back.
@@ -135,19 +130,6 @@ export default function UploadPage() {
           New candidate photo
         </label>
       </div>
-      {source === "existing_feed" && (
-        <div>
-          <label>
-            Grid position (1 = most recent):{" "}
-            <input
-              type="number"
-              min="1"
-              value={gridPosition}
-              onChange={(e) => setGridPosition(e.target.value)}
-            />
-          </label>
-        </div>
-      )}
       <button onClick={handleUpload} disabled={!file || uploading}>
         {uploading ? "Uploading..." : "Upload"}
       </button>
@@ -165,9 +147,6 @@ export default function UploadPage() {
               style={{ objectFit: "cover" }}
             />
             <p>source: {photo.source ?? "(none)"}</p>
-            {photo.source === "existing_feed" && (
-              <p>grid_position: {photo.grid_position ?? "(none)"}</p>
-            )}
             <pre style={{ whiteSpace: "pre-wrap", fontSize: "10px" }}>
               {photo.analysis ? JSON.stringify(photo.analysis, null, 2) : "(no analysis yet)"}
             </pre>
