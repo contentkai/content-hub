@@ -143,15 +143,21 @@ export default function GridPage() {
         </div>
       )}
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, 150px)", gap: "4px" }}>
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(3, 1fr)",
+          gap: "2px",
+          maxWidth: "480px",
+          margin: "0 auto",
+        }}
+      >
         {photos.map((photo) => (
           <img
             key={photo.id}
             src={photo.public_url}
             alt={`Grid position ${photo.grid_position}`}
-            width={150}
-            height={150}
-            style={{ objectFit: "cover" }}
+            style={{ width: "100%", aspectRatio: "1 / 1", objectFit: "cover" }}
           />
         ))}
       </div>
