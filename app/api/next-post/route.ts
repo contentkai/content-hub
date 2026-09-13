@@ -21,22 +21,37 @@ Return ONLY valid JSON in this exact shape, with no other text before or after i
   "reason": "null if recommend is true, otherwise a one-sentence explanation of why nothing fits"
 }`;
 
+const TARGET_INSTRUCTION = `
+
+Favor candidates that move the feed closer to the target aesthetic, while still fitting reasonably with the recent posts — don't force a jarring mismatch even if it's closer to the target.`;
+
 export async function POST(req: NextRequest) {
   try {
-    const { candidates, aestheticProfile, recentPosts } = await req.json();
+    const { candidates, aestheticProfile, recentPosts, targetAestheticProfile } = await req.json();
 
     if (!Array.isArray(candidates) || candidates.length === 0) {
       return NextResponse.json({ error: "No candidate photos provided" }, { status: 400 });
     }
 
-    const prompt =
+    let prompt =
       PROMPT +
       JSON.stringify(aestheticProfile, null, 2) +
       "\n\n3 most recent posts in the grid (grid_position 1 = most recent):\n" +
       JSON.stringify(recentPosts, null, 2) +
       "\n\nCandidate photos:\n" +
-      JSON.stringify(candidates, null, 2) +
-      INSTRUCTIONS;
+      JSON.stringify(candidates, null, 2);
+
+    if (targetAestheticProfile) {
+      prompt +=
+        "\n\nTarget aesthetic the account is moving toward:\n" +
+        JSON.stringify(targetAestheticProfile, null, 2);
+    }
+
+    prompt += INSTRUCTIONS;
+
+    if (targetAestheticProfile) {
+      prompt += TARGET_INSTRUCTION;
+    }
 
     const response = await anthropic.messages.create({
       model: "claude-opus-5",

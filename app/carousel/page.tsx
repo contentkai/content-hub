@@ -64,11 +64,19 @@ export default function CarouselPage() {
       return;
     }
 
+    const { data: targetRows } = await supabase
+      .from("target_aesthetic_profile")
+      .select("summary")
+      .order("id", { ascending: false })
+      .limit(1);
+    const targetAestheticProfile = targetRows?.[0]?.summary ?? null;
+
     const res = await fetch("/api/carousel", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         photos: selectedPhotos.map((p) => ({ id: p.id, analysis: p.analysis })),
+        targetAestheticProfile,
       }),
     });
     const data = await res.json();

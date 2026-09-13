@@ -15,9 +15,9 @@ type Photo = {
 
 export default function UploadPage() {
   const [file, setFile] = useState<File | null>(null);
-  const [source, setSource] = useState<"existing_feed" | "new_candidate" | "carousel_candidate">(
-    "existing_feed"
-  );
+  const [source, setSource] = useState<
+    "existing_feed" | "new_candidate" | "carousel_candidate" | "inspo"
+  >("existing_feed");
   const [existingCaption, setExistingCaption] = useState("");
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
@@ -177,6 +177,16 @@ export default function UploadPage() {
             onChange={() => setSource("carousel_candidate")}
           />
           Carousel candidate
+        </label>
+        <label>
+          <input
+            type="radio"
+            name="source"
+            value="inspo"
+            checked={source === "inspo"}
+            onChange={() => setSource("inspo")}
+          />
+          Inspo (target aesthetic)
         </label>
       </div>
       {source === "existing_feed" && (

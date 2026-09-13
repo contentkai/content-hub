@@ -24,9 +24,13 @@ Return ONLY valid JSON in this exact shape, with no other text before or after i
   "shot_list": ["short concrete shot idea"]
 }`;
 
+const TARGET_INSTRUCTION = `
+
+Favor candidates that move the feed closer to the target aesthetic, while still fitting reasonably with the recent posts — don't force a jarring mismatch even if it's closer to the target.`;
+
 export async function POST(req: NextRequest) {
   try {
-    const { recentPosts, candidates } = await req.json();
+    const { recentPosts, candidates, aestheticProfile, targetAestheticProfile } = await req.json();
 
     if (!Array.isArray(recentPosts) || recentPosts.length === 0) {
       return NextResponse.json({ error: "No recent posts provided" }, { status: 400 });
@@ -35,12 +39,25 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "No candidates provided" }, { status: 400 });
     }
 
-    const prompt =
-      PROMPT +
-      JSON.stringify(recentPosts, null, 2) +
-      "\n\nCandidate photos available to post:\n" +
-      JSON.stringify(candidates, null, 2) +
-      INSTRUCTIONS;
+    let prompt = PROMPT + JSON.stringify(recentPosts, null, 2);
+
+    if (aestheticProfile) {
+      prompt += "\n\nCurrent overall aesthetic profile:\n" + JSON.stringify(aestheticProfile, null, 2);
+    }
+
+    prompt += "\n\nCandidate photos available to post:\n" + JSON.stringify(candidates, null, 2);
+
+    if (targetAestheticProfile) {
+      prompt +=
+        "\n\nTarget aesthetic the account is moving toward:\n" +
+        JSON.stringify(targetAestheticProfile, null, 2);
+    }
+
+    prompt += INSTRUCTIONS;
+
+    if (targetAestheticProfile) {
+      prompt += TARGET_INSTRUCTION;
+    }
 
     const response = await anthropic.messages.create({
       model: "claude-opus-5",

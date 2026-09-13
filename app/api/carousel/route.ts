@@ -20,15 +20,31 @@ Return ONLY valid JSON in this exact shape, with no other text before or after i
   "dropped": [{"photo_id": "id as string", "reason": "one-sentence reason it was left out"}]
 }`;
 
+const TARGET_INSTRUCTION = `
+
+Favor combinations and orderings that move the selection closer to the target aesthetic, while still fitting reasonably together as a cohesive carousel — don't force a jarring mismatch even if it's closer to the target.`;
+
 export async function POST(req: NextRequest) {
   try {
-    const { photos } = await req.json();
+    const { photos, targetAestheticProfile } = await req.json();
 
     if (!Array.isArray(photos) || photos.length === 0) {
       return NextResponse.json({ error: "No photos provided" }, { status: 400 });
     }
 
-    const prompt = PROMPT + JSON.stringify(photos, null, 2) + INSTRUCTIONS;
+    let prompt = PROMPT + JSON.stringify(photos, null, 2);
+
+    if (targetAestheticProfile) {
+      prompt +=
+        "\n\nTarget aesthetic the account is moving toward:\n" +
+        JSON.stringify(targetAestheticProfile, null, 2);
+    }
+
+    prompt += INSTRUCTIONS;
+
+    if (targetAestheticProfile) {
+      prompt += TARGET_INSTRUCTION;
+    }
 
     const response = await anthropic.messages.create({
       model: "claude-opus-5",

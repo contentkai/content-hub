@@ -28,10 +28,13 @@ type FixFeedResult = {
 export default function GridPage() {
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [profile, setProfile] = useState<AestheticProfile | null>(null);
+  const [targetProfile, setTargetProfile] = useState<AestheticProfile | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [result, setResult] = useState<FixFeedResult | null>(null);
   const [candidatePhotos, setCandidatePhotos] = useState<Photo[]>([]);
+  const [targetLoading, setTargetLoading] = useState(false);
+  const [targetError, setTargetError] = useState("");
 
   useEffect(() => {
     async function load() {
@@ -55,9 +58,81 @@ export default function GridPage() {
       if (profileRows && profileRows.length > 0) {
         setProfile(profileRows[0].summary as AestheticProfile);
       }
+
+      const { data: targetRows } = await supabase
+        .from("target_aesthetic_profile")
+        .select("summary")
+        .order("id", { ascending: false })
+        .limit(1);
+      if (targetRows && targetRows.length > 0) {
+        setTargetProfile(targetRows[0].summary as AestheticProfile);
+      }
     }
     load();
   }, []);
+
+  async function handleGenerateTargetAesthetic() {
+    setTargetLoading(true);
+    setTargetError("");
+
+    const { data: inspoPhotos, error: inspoError } = await supabase
+      .from("photos")
+      .select("analysis")
+      .eq("source", "inspo")
+      .not("analysis", "is", null);
+
+    if (inspoError) {
+      setTargetError(inspoError.message);
+      setTargetLoading(false);
+      return;
+    }
+
+    if (!inspoPhotos || inspoPhotos.length === 0) {
+      setTargetError("No inspo photos with analysis found");
+      setTargetLoading(false);
+      return;
+    }
+
+    const res = await fetch("/api/aesthetic-summary", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ analyses: inspoPhotos.map((p) => p.analysis) }),
+    });
+    const data = await res.json();
+
+    if (!res.ok) {
+      setTargetError(data.error ?? "Request failed");
+      setTargetLoading(false);
+      return;
+    }
+
+    let newTarget: AestheticProfile;
+    try {
+      newTarget = JSON.parse(data.result);
+    } catch {
+      setTargetError("Model did not return valid JSON: " + data.result);
+      setTargetLoading(false);
+      return;
+    }
+
+    const { data: existing } = await supabase
+      .from("target_aesthetic_profile")
+      .select("id")
+      .order("id", { ascending: false })
+      .limit(1);
+
+    if (existing && existing.length > 0) {
+      await supabase
+        .from("target_aesthetic_profile")
+        .update({ summary: newTarget })
+        .eq("id", existing[0].id);
+    } else {
+      await supabase.from("target_aesthetic_profile").insert({ summary: newTarget });
+    }
+
+    setTargetProfile(newTarget);
+    setTargetLoading(false);
+  }
 
   async function handleFixMyFeed() {
     setLoading(true);
@@ -104,6 +179,8 @@ export default function GridPage() {
       body: JSON.stringify({
         recentPosts,
         candidates: (candidates ?? []).map((c) => ({ id: c.id, analysis: c.analysis })),
+        aestheticProfile: profile,
+        targetAestheticProfile: targetProfile,
       }),
     });
     const data = await res.json();
@@ -138,10 +215,25 @@ export default function GridPage() {
 
       {profile && (
         <div>
+          <h2>Your current aesthetic</h2>
           <p>{profile.tags.join(", ")}</p>
           <p>{profile.description}</p>
         </div>
       )}
+
+      <div>
+        <h2>Your target aesthetic</h2>
+        <button onClick={handleGenerateTargetAesthetic} disabled={targetLoading}>
+          {targetLoading ? "Generating..." : "Generate target aesthetic"}
+        </button>
+        {targetError && <p>Error: {targetError}</p>}
+        {targetProfile && (
+          <>
+            <p>{targetProfile.tags.join(", ")}</p>
+            <p>{targetProfile.description}</p>
+          </>
+        )}
+      </div>
 
       <div
         style={{

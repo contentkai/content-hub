@@ -38,6 +38,13 @@ export async function fetchNextPostRecommendation(): Promise<NextPostResult> {
   if (profileError) return { ok: false, error: profileError.message };
   const aestheticProfile = profileRows?.[0]?.summary ?? null;
 
+  const { data: targetRows } = await supabase
+    .from("target_aesthetic_profile")
+    .select("summary")
+    .order("id", { ascending: false })
+    .limit(1);
+  const targetAestheticProfile = targetRows?.[0]?.summary ?? null;
+
   const { data: recentPosts, error: recentError } = await supabase
     .from("photos")
     .select("id, grid_position, analysis")
@@ -55,6 +62,7 @@ export async function fetchNextPostRecommendation(): Promise<NextPostResult> {
       candidates: candidates.map((c) => ({ id: c.id, analysis: c.analysis })),
       aestheticProfile,
       recentPosts,
+      targetAestheticProfile,
     }),
   });
   const data = await res.json();
