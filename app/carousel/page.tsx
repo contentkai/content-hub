@@ -28,7 +28,7 @@ export default function CarouselPage() {
       const { data, error } = await supabase
         .from("photos")
         .select("id, public_url, analysis")
-        .eq("source", "new_candidate")
+        .eq("source", "carousel_candidate")
         .not("analysis", "is", null);
       if (error) {
         setError(error.message);

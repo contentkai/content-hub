@@ -14,7 +14,9 @@ type Photo = {
 
 export default function UploadPage() {
   const [file, setFile] = useState<File | null>(null);
-  const [source, setSource] = useState<"existing_feed" | "new_candidate">("existing_feed");
+  const [source, setSource] = useState<"existing_feed" | "new_candidate" | "carousel_candidate">(
+    "existing_feed"
+  );
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
   const [photos, setPhotos] = useState<Photo[]>([]);
@@ -160,6 +162,16 @@ export default function UploadPage() {
             onChange={() => setSource("new_candidate")}
           />
           New candidate photo
+        </label>
+        <label>
+          <input
+            type="radio"
+            name="source"
+            value="carousel_candidate"
+            checked={source === "carousel_candidate"}
+            onChange={() => setSource("carousel_candidate")}
+          />
+          Carousel candidate
         </label>
       </div>
       <button onClick={handleUpload} disabled={!file || uploading}>
