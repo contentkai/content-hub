@@ -10,9 +10,11 @@ const INSTRUCTIONS = `
 
 Instructions:
 1. Identify specific patterns that are repetitive or unbalanced in the current grid (e.g. "4 of your last 6 posts are close-up portraits"), grounded in the actual analysis data — not generic advice.
-2. Decide which of the candidate photos (if any) would improve the grid, and propose the best order to slot them in ahead of the existing photos — reason about how each one sits next to the current most-recent posts and next to each other, the same way you would when picking a single next post, but for the whole candidate pool at once. Give a specific one-sentence reason for each candidate's position.
-3. For any candidates that don't earn a spot, explain why they're being left out rather than forced in — a specific one-sentence reason grounded in the data.
+2. Decide which of the candidate photos (if any) would improve the grid, and propose the best order to slot them in ahead of the existing photos — reason about how each one sits next to the current most-recent posts and next to each other, the same way you would when picking a single next post, but for the whole candidate pool at once. Give a specific reason for each candidate's position.
+3. For any candidates that don't earn a spot, explain why they're being left out rather than forced in — a specific reason grounded in the data.
 4. If none of the candidates help the grid, leave suggested_order empty and instead provide a shot list of 2-4 short, concrete ideas for what to shoot next to address the issues you identified (e.g. "a wide shot with lots of sky", "a candid action shot", "a close-up detail with cooler tones"). If candidates were used, leave shot_list empty.
+
+IMPORTANT: every "reason" field (in suggested_order and left_out) must be exactly ONE concise sentence — a single clause, not multiple clauses joined by "and"/"while"/em-dashes/semicolons. Keep the whole response tight; do not pad with extra detail beyond what's needed to make the point.
 
 Return ONLY valid JSON in this exact shape, with no other text before or after it:
 {
@@ -42,7 +44,7 @@ export async function POST(req: NextRequest) {
 
     const response = await anthropic.messages.create({
       model: "claude-opus-5",
-      max_tokens: 2048,
+      max_tokens: 8000,
       messages: [{ role: "user", content: prompt }],
     });
 

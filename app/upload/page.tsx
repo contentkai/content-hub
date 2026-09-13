@@ -10,6 +10,7 @@ type Photo = {
   source: string | null;
   analysis: Record<string, unknown> | null;
   grid_position: number | null;
+  existing_caption: string | null;
 };
 
 export default function UploadPage() {
@@ -17,6 +18,7 @@ export default function UploadPage() {
   const [source, setSource] = useState<"existing_feed" | "new_candidate" | "carousel_candidate">(
     "existing_feed"
   );
+  const [existingCaption, setExistingCaption] = useState("");
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
   const [photos, setPhotos] = useState<Photo[]>([]);
@@ -93,6 +95,8 @@ export default function UploadPage() {
         public_url: publicUrlData.publicUrl,
         source,
         grid_position: source === "existing_feed" ? 1 : null,
+        existing_caption:
+          source === "existing_feed" && existingCaption.trim() !== "" ? existingCaption.trim() : null,
       })
       .select()
       .single();
@@ -105,6 +109,7 @@ export default function UploadPage() {
 
     await loadPhotos();
     setFile(null);
+    setExistingCaption("");
     setUploading(false);
 
     // Fire off vision analysis and backfill it once it comes back.
@@ -174,6 +179,20 @@ export default function UploadPage() {
           Carousel candidate
         </label>
       </div>
+      {source === "existing_feed" && (
+        <div>
+          <label>
+            Original caption (if any):
+            <br />
+            <textarea
+              value={existingCaption}
+              onChange={(e) => setExistingCaption(e.target.value)}
+              rows={3}
+              cols={50}
+            />
+          </label>
+        </div>
+      )}
       <button onClick={handleUpload} disabled={!file || uploading}>
         {uploading ? "Uploading..." : "Upload"}
       </button>
@@ -192,7 +211,10 @@ export default function UploadPage() {
             />
             <p>source: {photo.source ?? "(none)"}</p>
             {photo.source === "existing_feed" && (
-              <p>grid_position: {photo.grid_position ?? "(none)"}</p>
+              <>
+                <p>grid_position: {photo.grid_position ?? "(none)"}</p>
+                <p>existing_caption: {photo.existing_caption ?? "(none)"}</p>
+              </>
             )}
             <pre style={{ whiteSpace: "pre-wrap", fontSize: "10px" }}>
               {photo.analysis ? JSON.stringify(photo.analysis, null, 2) : "(no analysis yet)"}

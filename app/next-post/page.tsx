@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { supabase } from "@/lib/supabase";
+import CaptionWriter from "@/components/CaptionWriter";
 
 type Photo = {
   id: number;
@@ -126,6 +127,7 @@ export default function NextPostPage() {
             style={{ maxWidth: "500px", width: "100%" }}
           />
           <p>{recommendation.why}</p>
+          <CaptionWriter analysis={chosenPhoto.analysis} />
         </div>
       )}
 

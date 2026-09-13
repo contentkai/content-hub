@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import CaptionWriter from "@/components/CaptionWriter";
 
 type Photo = {
   id: number;
@@ -116,7 +117,12 @@ export default function GridPage() {
     try {
       setResult(JSON.parse(data.result));
     } catch {
-      setError("Model did not return valid JSON: " + data.result);
+      const preview = String(data.result ?? "").slice(0, 300);
+      setError(
+        `Couldn't parse the response as JSON (it may have been cut off mid-response). Response preview: ${preview}${
+          data.result?.length > 300 ? "..." : ""
+        }`
+      );
     }
 
     setLoading(false);
@@ -182,6 +188,7 @@ export default function GridPage() {
                         />
                       )}
                       <p>{item.reason}</p>
+                      {photo?.analysis && <CaptionWriter analysis={photo.analysis} />}
                     </div>
                   );
                 })}
