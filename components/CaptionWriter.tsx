@@ -5,9 +5,10 @@ import { supabase } from "@/lib/supabase";
 
 type Props = {
   analysis: Record<string, unknown>;
+  limit?: number;
 };
 
-export default function CaptionWriter({ analysis }: Props) {
+export default function CaptionWriter({ analysis, limit }: Props) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [captions, setCaptions] = useState<string[] | null>(null);
@@ -95,7 +96,7 @@ export default function CaptionWriter({ analysis }: Props) {
       {error && <p>Error: {error}</p>}
       {captions && (
         <div>
-          {captions.map((caption, i) => (
+          {(limit ? captions.slice(0, limit) : captions).map((caption, i) => (
             <div key={i} style={{ marginTop: "8px" }}>
               <p>{caption}</p>
               <button onClick={() => handleUseThis(i)} disabled={usedIndex === i}>
