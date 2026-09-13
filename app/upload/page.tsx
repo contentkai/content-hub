@@ -148,9 +148,19 @@ export default function UploadPage() {
       return;
     }
 
-    const { error: deleteError } = await supabase.from("photos").delete().eq("id", photo.id);
+    const { data: deletedRows, error: deleteError } = await supabase
+      .from("photos")
+      .delete()
+      .eq("id", photo.id)
+      .select();
     if (deleteError) {
       setError(deleteError.message);
+      return;
+    }
+    if (!deletedRows || deletedRows.length === 0) {
+      setError(
+        "Delete didn't affect any rows — likely a missing RLS DELETE policy on the photos table."
+      );
       return;
     }
 
