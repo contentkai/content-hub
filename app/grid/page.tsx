@@ -33,8 +33,6 @@ export default function GridPage() {
   const [error, setError] = useState("");
   const [result, setResult] = useState<FixFeedResult | null>(null);
   const [candidatePhotos, setCandidatePhotos] = useState<Photo[]>([]);
-  const [targetLoading, setTargetLoading] = useState(false);
-  const [targetError, setTargetError] = useState("");
 
   async function loadCandidates() {
     const { data, error: candidatesError } = await supabase
@@ -87,69 +85,6 @@ export default function GridPage() {
     }
     load();
   }, []);
-
-  async function handleGenerateTargetAesthetic() {
-    setTargetLoading(true);
-    setTargetError("");
-
-    const { data: inspoPhotos, error: inspoError } = await supabase
-      .from("photos")
-      .select("analysis")
-      .eq("source", "inspo")
-      .not("analysis", "is", null);
-
-    if (inspoError) {
-      setTargetError(inspoError.message);
-      setTargetLoading(false);
-      return;
-    }
-
-    if (!inspoPhotos || inspoPhotos.length === 0) {
-      setTargetError("No inspo photos with analysis found");
-      setTargetLoading(false);
-      return;
-    }
-
-    const res = await fetch("/api/aesthetic-summary", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ analyses: inspoPhotos.map((p) => p.analysis) }),
-    });
-    const data = await res.json();
-
-    if (!res.ok) {
-      setTargetError(data.error ?? "Request failed");
-      setTargetLoading(false);
-      return;
-    }
-
-    let newTarget: AestheticProfile;
-    try {
-      newTarget = JSON.parse(data.result);
-    } catch {
-      setTargetError("Model did not return valid JSON: " + data.result);
-      setTargetLoading(false);
-      return;
-    }
-
-    const { data: existing } = await supabase
-      .from("target_aesthetic_profile")
-      .select("id")
-      .order("id", { ascending: false })
-      .limit(1);
-
-    if (existing && existing.length > 0) {
-      await supabase
-        .from("target_aesthetic_profile")
-        .update({ summary: newTarget })
-        .eq("id", existing[0].id);
-    } else {
-      await supabase.from("target_aesthetic_profile").insert({ summary: newTarget });
-    }
-
-    setTargetProfile(newTarget);
-    setTargetLoading(false);
-  }
 
   async function handleFixMyFeed() {
     setLoading(true);
@@ -254,34 +189,6 @@ export default function GridPage() {
   return (
     <div className="page">
       <h1>Grid</h1>
-
-      {profile && (
-        <div className="section-block">
-          <h2>Your current aesthetic</h2>
-          <p className="text-secondary label-block" style={{ fontSize: "13px" }}>
-            {profile.tags.join(" · ")}
-          </p>
-          <p className="quote prose content-block">{profile.description}</p>
-        </div>
-      )}
-
-      <div className="section-block">
-        <h2>Your target aesthetic</h2>
-        <div className="content-block">
-          <button onClick={handleGenerateTargetAesthetic} disabled={targetLoading} className="link">
-            {targetLoading ? "Generating…" : "Generate target aesthetic"}
-          </button>
-        </div>
-        {targetError && <p className="text-secondary label-block">{targetError}</p>}
-        {targetProfile && (
-          <>
-            <p className="text-secondary content-block" style={{ fontSize: "13px" }}>
-              {targetProfile.tags.join(" · ")}
-            </p>
-            <p className="quote prose label-block">{targetProfile.description}</p>
-          </>
-        )}
-      </div>
 
       <div className="section-block">
         <h2>Candidates</h2>

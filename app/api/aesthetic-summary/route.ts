@@ -12,12 +12,23 @@ Tags should be short and readable, e.g. "warm", "high contrast", "environmental"
 Analysis data:
 `;
 
+const PREFERENCE_PREFIX = `
+
+The user has also answered these preference questions, each indicating which photo they preferred along a specific visual axis — use these to make the tags and description more specific and niche, not generic (e.g. "the user has indicated they prefer warmer light over cooler light along the warmth axis"):
+`;
+
 export async function POST(req: NextRequest) {
   try {
-    const { analyses } = await req.json();
+    const { analyses, preferenceAnswers } = await req.json();
 
     if (!Array.isArray(analyses) || analyses.length === 0) {
       return NextResponse.json({ error: "No analyses provided" }, { status: 400 });
+    }
+
+    let prompt = PROMPT + JSON.stringify(analyses, null, 2);
+
+    if (Array.isArray(preferenceAnswers) && preferenceAnswers.length > 0) {
+      prompt += PREFERENCE_PREFIX + JSON.stringify(preferenceAnswers, null, 2);
     }
 
     const response = await anthropic.messages.create({
@@ -26,7 +37,7 @@ export async function POST(req: NextRequest) {
       messages: [
         {
           role: "user",
-          content: PROMPT + JSON.stringify(analyses, null, 2),
+          content: prompt,
         },
       ],
     });
