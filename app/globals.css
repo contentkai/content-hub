@@ -21,15 +21,8 @@ body {
 
 body {
   font-family: var(--font-instrument-sans), sans-serif;
-}
-
-h1,
-h2,
-h3,
-.serif {
-  font-family: var(--font-fraunces), serif;
-  font-weight: 500;
-  margin: 0;
+  font-size: 15px;
+  line-height: 1.5;
 }
 
 button,
@@ -38,11 +31,84 @@ textarea,
 select {
   font-family: inherit;
   color: inherit;
+  font-size: inherit;
+  line-height: inherit;
 }
 
 a {
   color: inherit;
 }
+
+/* ---------- Type scale ---------- */
+
+/* Fraunces headlines / why-text */
+h1,
+h2,
+h3,
+.headline {
+  font-family: var(--font-fraunces), serif;
+  font-weight: 500;
+  font-size: 28px;
+  line-height: 1.3;
+  margin: 0;
+}
+
+/* Fraunces captions / quotes */
+.quote {
+  font-family: var(--font-fraunces), serif;
+  font-style: italic;
+  font-weight: 400;
+  font-size: 18px;
+  line-height: 1.6;
+  margin: 0;
+}
+
+/* Instrument Sans labels ("Why", "Caption") */
+.label {
+  display: block;
+  font-family: var(--font-instrument-sans), sans-serif;
+  font-size: 13px;
+  line-height: 1.5;
+  letter-spacing: 0.02em;
+  color: var(--accent);
+  text-transform: uppercase;
+  margin: 0;
+}
+
+/* Constrain prose so lines stay readable, independent of photo width */
+.prose {
+  max-width: 60ch;
+}
+
+/* ---------- Layout rhythm ---------- */
+
+.page {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 0 24px 96px;
+}
+@media (min-width: 768px) {
+  .page {
+    padding: 0 48px 96px;
+  }
+}
+
+/* Spacing rhythm, as fixed steps — reuse these values everywhere: */
+/* 8px  = label -> its content   */
+/* 32px = between content blocks (photo -> why -> caption -> button) */
+/* 64px = between page sections  */
+
+.label-block {
+  margin-top: 8px;
+}
+.content-block {
+  margin-top: 32px;
+}
+.section-block {
+  margin-top: 64px;
+}
+
+/* ---------- Interactive elements ---------- */
 
 /* Plain text link — used for every secondary action */
 .link {
@@ -53,7 +119,8 @@ a {
   margin: 0;
   color: var(--paper);
   font-family: var(--font-instrument-sans), sans-serif;
-  font-size: 14px;
+  font-size: 15px;
+  line-height: 1.5;
   text-decoration: none;
   border-bottom: 1px solid transparent;
   cursor: pointer;
@@ -76,7 +143,8 @@ a {
   border-radius: 0;
   padding: 12px 22px;
   font-family: var(--font-instrument-sans), sans-serif;
-  font-size: 14px;
+  font-size: 15px;
+  line-height: 1.5;
   font-weight: 600;
   letter-spacing: 0.01em;
   cursor: pointer;
@@ -85,16 +153,6 @@ a {
   background: var(--text-secondary);
   color: var(--bg);
   cursor: default;
-}
-
-.label-accent {
-  color: var(--accent);
-  font-family: var(--font-instrument-sans), sans-serif;
-  font-size: 12px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  margin: 0 0 8px;
 }
 
 .text-secondary {

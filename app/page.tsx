@@ -36,17 +36,11 @@ export default function HomePage() {
   }, []);
 
   return (
-    <div style={{ maxWidth: "640px", margin: "0 auto", width: "100%" }}>
+    <div className="page">
       {loading && (
-        <p className="text-secondary" style={{ padding: "24px 20px", fontSize: "14px" }}>
-          Finding today&apos;s recommendation…
-        </p>
+        <p className="text-secondary content-block">Finding today&apos;s recommendation…</p>
       )}
-      {error && (
-        <p className="text-secondary" style={{ padding: "24px 20px", fontSize: "14px" }}>
-          {error}
-        </p>
-      )}
+      {error && <p className="text-secondary content-block">{error}</p>}
 
       {recommendation && recommendation.recommend && chosenPhoto && (
         <div>
@@ -56,48 +50,45 @@ export default function HomePage() {
             className="fade-in"
             style={{ width: "100%", display: "block", background: "var(--surface)" }}
           />
-          <div style={{ padding: "24px 20px 0" }}>
-            <p className="label-accent fade-in">Why</p>
-            <p className="serif fade-in" style={{ fontSize: "20px", lineHeight: 1.5, fontWeight: 400 }}>
-              {recommendation.why}
-            </p>
 
-            <div style={{ marginTop: "24px" }}>
-              <CaptionWriter analysis={chosenPhoto.analysis} primary />
-            </div>
+          <div className="content-block">
+            <p className="label fade-in">Why</p>
+            <p className="headline prose fade-in label-block">{recommendation.why}</p>
+          </div>
 
-            <div style={{ marginTop: "16px" }}>
-              <SuggestEdits
-                photoId={chosenPhoto.id}
-                publicUrl={chosenPhoto.public_url}
-                analysis={chosenPhoto.analysis}
-              />
-            </div>
+          <div className="content-block">
+            <CaptionWriter analysis={chosenPhoto.analysis} primary />
+          </div>
 
-            <div
-              className="hairline-top"
-              style={{ marginTop: "32px", paddingTop: "16px", display: "flex", gap: "20px" }}
-            >
-              <Link href="/carousel" className="link">
-                Build a carousel
-              </Link>
-              <Link href="/upload" className="link">
-                Upload photos
-              </Link>
-            </div>
+          <div className="content-block">
+            <SuggestEdits
+              photoId={chosenPhoto.id}
+              publicUrl={chosenPhoto.public_url}
+              analysis={chosenPhoto.analysis}
+            />
+          </div>
+
+          <div
+            className="hairline-top section-block"
+            style={{ paddingTop: "24px", display: "flex", gap: "24px" }}
+          >
+            <Link href="/carousel" className="link">
+              Build a carousel
+            </Link>
+            <Link href="/upload" className="link">
+              Upload photos
+            </Link>
           </div>
         </div>
       )}
 
       {recommendation && !recommendation.recommend && (
-        <div style={{ padding: "24px 20px 0" }}>
-          <p className="label-accent">Why</p>
-          <p className="serif" style={{ fontSize: "20px", lineHeight: 1.5, fontWeight: 400 }}>
-            {recommendation.reason}
-          </p>
+        <div>
+          <p className="label">Why</p>
+          <p className="headline prose label-block">{recommendation.reason}</p>
           <div
-            className="hairline-top"
-            style={{ marginTop: "32px", paddingTop: "16px", display: "flex", gap: "20px" }}
+            className="hairline-top section-block"
+            style={{ paddingTop: "24px", display: "flex", gap: "24px" }}
           >
             <Link href="/carousel" className="link">
               Build a carousel

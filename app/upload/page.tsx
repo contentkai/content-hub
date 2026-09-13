@@ -192,127 +192,124 @@ export default function UploadPage() {
   ];
 
   return (
-    <div style={{ maxWidth: "640px", margin: "0 auto", padding: "24px 20px 64px" }}>
-      <h1 style={{ fontSize: "28px" }}>Upload</h1>
+    <div className="page">
+      <h1>Upload</h1>
 
-      <div style={{ marginTop: "24px" }}>
+      <div className="section-block">
         <input
           type="file"
           accept="image/*"
           onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-          style={{ fontSize: "14px" }}
         />
-      </div>
 
-      <div style={{ marginTop: "16px", display: "flex", flexDirection: "column", gap: "8px" }}>
-        {sourceOptions.map((opt) => (
-          <label
-            key={opt.value}
-            style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "14px", cursor: "pointer" }}
-          >
-            <input
-              type="radio"
-              name="source"
-              value={opt.value}
-              checked={source === opt.value}
-              onChange={() => setSource(opt.value)}
-            />
-            {opt.label}
-          </label>
-        ))}
-      </div>
+        <div className="content-block" style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+          {sourceOptions.map((opt) => (
+            <label
+              key={opt.value}
+              style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer" }}
+            >
+              <input
+                type="radio"
+                name="source"
+                value={opt.value}
+                checked={source === opt.value}
+                onChange={() => setSource(opt.value)}
+              />
+              {opt.label}
+            </label>
+          ))}
+        </div>
 
-      {source === "existing_feed" && (
-        <div style={{ marginTop: "16px" }}>
-          <label style={{ fontSize: "13px" }} className="text-secondary">
-            Original caption (if any)
-            <br />
+        {source === "existing_feed" && (
+          <div className="content-block">
+            <label className="label text-secondary" style={{ textTransform: "none" }}>
+              Original caption (if any)
+            </label>
             <textarea
               value={existingCaption}
               onChange={(e) => setExistingCaption(e.target.value)}
               rows={3}
-              style={{ width: "100%", marginTop: "6px", fontSize: "14px" }}
+              className="label-block"
+              style={{ width: "100%" }}
             />
-          </label>
-        </div>
-      )}
-
-      <div style={{ marginTop: "20px" }}>
-        <button onClick={handleUpload} disabled={!file || uploading} className="btn-primary">
-          {uploading ? "Uploading…" : "Upload"}
-        </button>
-      </div>
-      {error && (
-        <p className="text-secondary" style={{ fontSize: "13px", marginTop: "8px" }}>
-          {error}
-        </p>
-      )}
-
-      <h2 style={{ fontSize: "18px", marginTop: "40px" }}>Stored photos</h2>
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))",
-          gap: "16px",
-          marginTop: "16px",
-        }}
-      >
-        {photos.map((photo) => (
-          <div key={photo.id} style={{ position: "relative" }}>
-            <button
-              onClick={() => handleDelete(photo)}
-              title="Delete this photo"
-              style={{
-                position: "absolute",
-                top: "6px",
-                right: "6px",
-                background: "var(--surface)",
-                color: "var(--paper)",
-                border: "1px solid var(--hairline)",
-                borderRadius: "0",
-                width: "26px",
-                height: "26px",
-                cursor: "pointer",
-                fontSize: "13px",
-                lineHeight: 1,
-              }}
-            >
-              🗑
-            </button>
-            <img
-              src={photo.public_url}
-              alt={photo.storage_path}
-              style={{
-                width: "100%",
-                aspectRatio: "1 / 1",
-                objectFit: "cover",
-                display: "block",
-                background: "var(--surface)",
-              }}
-            />
-            <p className="text-secondary" style={{ fontSize: "12px", marginTop: "6px" }}>
-              {photo.source ?? "(none)"}
-            </p>
-            {photo.source === "existing_feed" && (
-              <>
-                <p className="text-secondary" style={{ fontSize: "12px" }}>
-                  position {photo.grid_position ?? "—"}
-                </p>
-                {photo.existing_caption && (
-                  <p className="serif" style={{ fontSize: "13px", marginTop: "4px" }}>
-                    {photo.existing_caption}
-                  </p>
-                )}
-              </>
-            )}
-            <pre
-              className="text-secondary"
-              style={{ whiteSpace: "pre-wrap", fontSize: "10px", marginTop: "6px" }}
-            >
-              {photo.analysis ? JSON.stringify(photo.analysis, null, 2) : "(no analysis yet)"}
-            </pre>
           </div>
-        ))}
+        )}
+
+        <div className="content-block">
+          <button onClick={handleUpload} disabled={!file || uploading} className="btn-primary">
+            {uploading ? "Uploading…" : "Upload"}
+          </button>
+          {error && <p className="text-secondary label-block">{error}</p>}
+        </div>
+      </div>
+
+      <div className="section-block">
+        <h2>Stored photos</h2>
+        <div
+          className="content-block"
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))",
+            gap: "24px",
+          }}
+        >
+          {photos.map((photo) => (
+            <div key={photo.id} style={{ position: "relative" }}>
+              <button
+                onClick={() => handleDelete(photo)}
+                title="Delete this photo"
+                style={{
+                  position: "absolute",
+                  top: "6px",
+                  right: "6px",
+                  background: "var(--surface)",
+                  color: "var(--paper)",
+                  border: "1px solid var(--hairline)",
+                  borderRadius: "0",
+                  width: "26px",
+                  height: "26px",
+                  cursor: "pointer",
+                  fontSize: "13px",
+                  lineHeight: 1,
+                }}
+              >
+                🗑
+              </button>
+              <img
+                src={photo.public_url}
+                alt={photo.storage_path}
+                style={{
+                  width: "100%",
+                  aspectRatio: "1 / 1",
+                  objectFit: "cover",
+                  display: "block",
+                  background: "var(--surface)",
+                }}
+              />
+              <p className="text-secondary label-block" style={{ fontSize: "13px" }}>
+                {photo.source ?? "(none)"}
+              </p>
+              {photo.source === "existing_feed" && (
+                <>
+                  <p className="text-secondary" style={{ fontSize: "13px" }}>
+                    position {photo.grid_position ?? "—"}
+                  </p>
+                  {photo.existing_caption && (
+                    <p className="quote label-block" style={{ fontSize: "14px" }}>
+                      {photo.existing_caption}
+                    </p>
+                  )}
+                </>
+              )}
+              <pre
+                className="text-secondary label-block"
+                style={{ whiteSpace: "pre-wrap", fontSize: "10px" }}
+              >
+                {photo.analysis ? JSON.stringify(photo.analysis, null, 2) : "(no analysis yet)"}
+              </pre>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );

@@ -140,51 +140,42 @@ export default function SuggestEdits({ photoId, publicUrl, analysis, primary }: 
       >
         {loading ? "Suggesting edits…" : "Suggest edits"}
       </button>
-      {error && (
-        <p className="text-secondary" style={{ fontSize: "13px", marginTop: "8px" }}>
-          {error}
-        </p>
-      )}
+      {error && <p className="text-secondary label-block">{error}</p>}
 
       {variations && (
-        <div style={{ display: "flex", gap: "20px", marginTop: "16px", overflowX: "auto" }}>
+        <div className="content-block" style={{ display: "flex", gap: "24px", overflowX: "auto" }}>
           <div style={{ flex: "0 0 auto", width: "200px" }}>
-            <p className="text-secondary" style={{ fontSize: "12px", marginBottom: "6px" }}>
-              Original
-            </p>
+            <p className="label">Original</p>
             <img
               src={publicUrl}
               alt="Original"
+              className="label-block"
               style={{ width: "100%", aspectRatio: "1 / 1", objectFit: "cover", background: "var(--surface)" }}
             />
           </div>
           {variations.map((v, i) => (
             <div key={i} style={{ flex: "0 0 auto", width: "200px" }}>
-              <p className="text-secondary" style={{ fontSize: "12px", marginBottom: "6px" }}>
-                {v.label}
-              </p>
+              <p className="label">{v.label}</p>
               {v.previewDataUrl ? (
                 <img
                   src={v.previewDataUrl}
                   alt={v.label}
+                  className="label-block"
                   style={{ width: "100%", aspectRatio: "1 / 1", objectFit: "cover", background: "var(--surface)" }}
                 />
               ) : (
-                <p className="text-secondary" style={{ fontSize: "13px" }}>
-                  Preview failed
-                </p>
+                <p className="text-secondary label-block">Preview failed</p>
               )}
-              <p className="serif" style={{ fontSize: "14px", marginTop: "8px" }}>
-                {v.reason}
-              </p>
-              <button
-                onClick={() => handleUseThisVersion(i)}
-                disabled={!v.previewDataUrl || v.used}
-                className="link"
-                style={{ fontSize: "13px", marginTop: "4px" }}
-              >
-                {v.used ? "Saved" : "Use this version"}
-              </button>
+              <p className="quote content-block">{v.reason}</p>
+              <div className="label-block">
+                <button
+                  onClick={() => handleUseThisVersion(i)}
+                  disabled={!v.previewDataUrl || v.used}
+                  className="link"
+                >
+                  {v.used ? "Saved" : "Use this version"}
+                </button>
+              </div>
             </div>
           ))}
         </div>

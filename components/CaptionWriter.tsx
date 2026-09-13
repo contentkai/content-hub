@@ -98,24 +98,18 @@ export default function CaptionWriter({ analysis, limit, primary }: Props) {
       >
         {loading ? "Writing…" : "Write a caption"}
       </button>
-      {error && (
-        <p className="text-secondary" style={{ fontSize: "13px", marginTop: "8px" }}>
-          {error}
-        </p>
-      )}
+      {error && <p className="text-secondary label-block">{error}</p>}
       {captions && (
-        <div>
+        <div className="content-block">
+          <p className="label">Caption</p>
           {(limit ? captions.slice(0, limit) : captions).map((caption, i) => (
-            <div key={i} style={{ marginTop: "16px" }}>
-              <p className="serif" style={{ fontSize: "16px", fontWeight: 400 }}>
-                {caption}
-              </p>
-              <div style={{ display: "flex", gap: "16px", marginTop: "6px" }}>
+            <div key={i} className={i === 0 ? "label-block" : "content-block"}>
+              <p className="quote prose">{caption}</p>
+              <div style={{ display: "flex", gap: "24px", marginTop: "8px" }}>
                 <button
                   onClick={() => handleUseThis(i)}
                   disabled={usedIndex === i}
                   className="link"
-                  style={{ fontSize: "13px" }}
                 >
                   {usedIndex === i ? "Copied" : "Use this"}
                 </button>
@@ -123,7 +117,6 @@ export default function CaptionWriter({ analysis, limit, primary }: Props) {
                   onClick={() => handleNeverSayAgain(i)}
                   disabled={bannedIndexes.has(i)}
                   className="link"
-                  style={{ fontSize: "13px" }}
                 >
                   {bannedIndexes.has(i) ? "Banned" : "Never say this again"}
                 </button>

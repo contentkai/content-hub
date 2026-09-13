@@ -116,68 +116,65 @@ export default function CarouselPage() {
   }
 
   return (
-    <div style={{ maxWidth: "640px", margin: "0 auto", padding: "24px 20px 64px" }}>
-      <h1 style={{ fontSize: "28px" }}>Carousel</h1>
+    <div className="page">
+      <h1>Carousel</h1>
 
-      <h2 style={{ fontSize: "18px", marginTop: "24px" }}>Candidate photos</h2>
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(3, 1fr)",
-          gap: "2px",
-          marginTop: "12px",
-        }}
-      >
-        {photos.map((photo) => (
-          <label key={photo.id} style={{ position: "relative", cursor: "pointer", display: "block" }}>
-            <input
-              type="checkbox"
-              checked={selectedIds.has(photo.id)}
-              onChange={() => toggleSelected(photo.id)}
-              style={{ position: "absolute", top: "6px", left: "6px", zIndex: 1 }}
-            />
-            <img
-              src={photo.public_url}
-              alt={`Photo ${photo.id}`}
-              style={{
-                width: "100%",
-                aspectRatio: "1 / 1",
-                objectFit: "cover",
-                display: "block",
-                background: "var(--surface)",
-                opacity: selectedIds.has(photo.id) ? 1 : 0.55,
-              }}
-            />
-          </label>
-        ))}
-      </div>
+      <div className="section-block">
+        <h2>Candidate photos</h2>
+        <div
+          className="content-block"
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(3, 1fr)",
+            gap: "2px",
+          }}
+        >
+          {photos.map((photo) => (
+            <label key={photo.id} style={{ position: "relative", cursor: "pointer", display: "block" }}>
+              <input
+                type="checkbox"
+                checked={selectedIds.has(photo.id)}
+                onChange={() => toggleSelected(photo.id)}
+                style={{ position: "absolute", top: "6px", left: "6px", zIndex: 1 }}
+              />
+              <img
+                src={photo.public_url}
+                alt={`Photo ${photo.id}`}
+                style={{
+                  width: "100%",
+                  aspectRatio: "1 / 1",
+                  objectFit: "cover",
+                  display: "block",
+                  background: "var(--surface)",
+                  opacity: selectedIds.has(photo.id) ? 1 : 0.55,
+                }}
+              />
+            </label>
+          ))}
+        </div>
 
-      <div style={{ marginTop: "24px" }}>
-        <button onClick={handleBuildCarousel} disabled={loading} className="btn-primary">
-          {loading ? "Building…" : "Build carousel"}
-        </button>
+        <div className="content-block">
+          <button onClick={handleBuildCarousel} disabled={loading} className="btn-primary">
+            {loading ? "Building…" : "Build carousel"}
+          </button>
+          {error && <p className="text-secondary label-block">{error}</p>}
+        </div>
       </div>
-      {error && (
-        <p className="text-secondary" style={{ fontSize: "13px", marginTop: "8px" }}>
-          {error}
-        </p>
-      )}
 
       {result && (
-        <div className="hairline-top" style={{ marginTop: "24px", paddingTop: "24px" }}>
-          <h2 style={{ fontSize: "18px" }}>Sequence</h2>
-          <div style={{ display: "flex", gap: "20px", marginTop: "12px", overflowX: "auto" }}>
+        <div className="section-block">
+          <h2>Sequence</h2>
+          <div className="content-block" style={{ display: "flex", gap: "24px", overflowX: "auto" }}>
             {result.sequence.map((item, i) => {
               const photo = photoById(item.photo_id);
               return (
                 <div key={item.photo_id} style={{ flex: "0 0 auto", width: "200px" }}>
-                  <p className="text-secondary" style={{ fontSize: "12px", marginBottom: "6px" }}>
-                    Slide {i + 1}
-                  </p>
+                  <p className="label">Slide {i + 1}</p>
                   {photo && (
                     <img
                       src={photo.public_url}
                       alt={`Photo ${item.photo_id}`}
+                      className="label-block"
                       style={{
                         width: "100%",
                         aspectRatio: "1 / 1",
@@ -186,18 +183,16 @@ export default function CarouselPage() {
                       }}
                     />
                   )}
-                  <p className="serif" style={{ fontSize: "14px", marginTop: "8px" }}>
-                    {item.reason}
-                  </p>
+                  <p className="quote content-block">{item.reason}</p>
                 </div>
               );
             })}
           </div>
 
           {result.dropped.length > 0 && (
-            <div style={{ marginTop: "24px" }}>
-              <h2 style={{ fontSize: "18px" }}>Dropped</h2>
-              <div style={{ display: "flex", gap: "20px", marginTop: "12px", overflowX: "auto" }}>
+            <div className="section-block">
+              <h2>Dropped</h2>
+              <div className="content-block" style={{ display: "flex", gap: "24px", overflowX: "auto" }}>
                 {result.dropped.map((item) => {
                   const photo = photoById(item.photo_id);
                   return (
@@ -214,9 +209,7 @@ export default function CarouselPage() {
                           }}
                         />
                       )}
-                      <p className="serif" style={{ fontSize: "14px", marginTop: "8px" }}>
-                        {item.reason}
-                      </p>
+                      <p className="quote content-block">{item.reason}</p>
                     </div>
                   );
                 })}

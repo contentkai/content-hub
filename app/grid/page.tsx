@@ -252,167 +252,161 @@ export default function GridPage() {
   }
 
   return (
-    <div style={{ maxWidth: "640px", margin: "0 auto", padding: "24px 20px 64px" }}>
-      <h1 style={{ fontSize: "28px" }}>Grid</h1>
+    <div className="page">
+      <h1>Grid</h1>
 
       {profile && (
-        <div style={{ marginTop: "24px" }}>
-          <h2 style={{ fontSize: "18px" }}>Your current aesthetic</h2>
-          <p className="text-secondary" style={{ fontSize: "13px", marginTop: "8px" }}>
+        <div className="section-block">
+          <h2>Your current aesthetic</h2>
+          <p className="text-secondary label-block" style={{ fontSize: "13px" }}>
             {profile.tags.join(" · ")}
           </p>
-          <p className="serif" style={{ fontSize: "16px", marginTop: "6px", lineHeight: 1.5 }}>
-            {profile.description}
-          </p>
+          <p className="quote prose content-block">{profile.description}</p>
         </div>
       )}
 
-      <div className="hairline-top" style={{ marginTop: "24px", paddingTop: "24px" }}>
-        <h2 style={{ fontSize: "18px" }}>Your target aesthetic</h2>
-        <div style={{ marginTop: "8px" }}>
+      <div className="section-block">
+        <h2>Your target aesthetic</h2>
+        <div className="content-block">
           <button onClick={handleGenerateTargetAesthetic} disabled={targetLoading} className="link">
             {targetLoading ? "Generating…" : "Generate target aesthetic"}
           </button>
         </div>
-        {targetError && (
-          <p className="text-secondary" style={{ fontSize: "13px", marginTop: "8px" }}>
-            {targetError}
-          </p>
-        )}
+        {targetError && <p className="text-secondary label-block">{targetError}</p>}
         {targetProfile && (
           <>
-            <p className="text-secondary" style={{ fontSize: "13px", marginTop: "8px" }}>
+            <p className="text-secondary content-block" style={{ fontSize: "13px" }}>
               {targetProfile.tags.join(" · ")}
             </p>
-            <p className="serif" style={{ fontSize: "16px", marginTop: "6px", lineHeight: 1.5 }}>
-              {targetProfile.description}
-            </p>
+            <p className="quote prose label-block">{targetProfile.description}</p>
           </>
         )}
       </div>
 
-      <h2 style={{ fontSize: "18px", marginTop: "32px" }}>Candidates</h2>
-      <div
-        style={{
-          border: "1px dashed var(--hairline)",
-          padding: "8px",
-          marginTop: "12px",
-        }}
-      >
+      <div className="section-block">
+        <h2>Candidates</h2>
         <div
+          className="content-block"
+          style={{
+            border: "1px dashed var(--hairline)",
+            padding: "8px",
+          }}
+        >
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(3, 1fr)",
+              gap: "2px",
+            }}
+          >
+            {getOrderedCandidates().map((slot) => (
+              <div
+                key={slot.photo.id}
+                style={{ position: "relative", opacity: slot.deprioritized ? 0.45 : 1 }}
+                title={slot.deprioritized ? slot.reason : undefined}
+              >
+                <img
+                  src={slot.photo.public_url}
+                  alt={`Candidate ${slot.photo.id}`}
+                  style={{
+                    width: "100%",
+                    aspectRatio: "1 / 1",
+                    objectFit: "cover",
+                    display: "block",
+                    background: "var(--surface)",
+                  }}
+                />
+                {slot.badge && (
+                  <span
+                    style={{
+                      position: "absolute",
+                      top: "4px",
+                      left: "4px",
+                      background: "var(--accent)",
+                      color: "var(--paper)",
+                      borderRadius: "50%",
+                      width: "20px",
+                      height: "20px",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontSize: "12px",
+                    }}
+                  >
+                    {slot.badge}
+                  </span>
+                )}
+                {slot.reason && !slot.deprioritized && (
+                  <p className="quote label-block" style={{ fontSize: "14px", padding: "0 4px" }}>
+                    {slot.reason}
+                  </p>
+                )}
+                {slot.badge && (
+                  <div className="label-block" style={{ padding: "0 4px" }}>
+                    <CaptionWriter analysis={slot.photo.analysis as Record<string, unknown>} />
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="section-block">
+        <h2>Your grid</h2>
+        <div
+          className="content-block"
           style={{
             display: "grid",
             gridTemplateColumns: "repeat(3, 1fr)",
             gap: "2px",
           }}
         >
-          {getOrderedCandidates().map((slot) => (
-            <div
-              key={slot.photo.id}
-              style={{ position: "relative", opacity: slot.deprioritized ? 0.45 : 1 }}
-              title={slot.deprioritized ? slot.reason : undefined}
-            >
-              <img
-                src={slot.photo.public_url}
-                alt={`Candidate ${slot.photo.id}`}
-                style={{
-                  width: "100%",
-                  aspectRatio: "1 / 1",
-                  objectFit: "cover",
-                  display: "block",
-                  background: "var(--surface)",
-                }}
-              />
-              {slot.badge && (
-                <span
-                  style={{
-                    position: "absolute",
-                    top: "4px",
-                    left: "4px",
-                    background: "var(--accent)",
-                    color: "var(--paper)",
-                    borderRadius: "50%",
-                    width: "20px",
-                    height: "20px",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    fontSize: "12px",
-                  }}
-                >
-                  {slot.badge}
-                </span>
-              )}
-              {slot.reason && !slot.deprioritized && (
-                <p className="serif text-secondary" style={{ fontSize: "12px", margin: "6px 0" }}>
-                  {slot.reason}
-                </p>
-              )}
-              {slot.badge && (
-                <CaptionWriter analysis={slot.photo.analysis as Record<string, unknown>} />
-              )}
-            </div>
+          {photos.map((photo) => (
+            <img
+              key={photo.id}
+              src={photo.public_url}
+              alt={`Grid position ${photo.grid_position}`}
+              style={{
+                width: "100%",
+                aspectRatio: "1 / 1",
+                objectFit: "cover",
+                background: "var(--surface)",
+              }}
+            />
           ))}
         </div>
       </div>
 
-      <h2 style={{ fontSize: "18px", marginTop: "32px" }}>Your grid</h2>
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(3, 1fr)",
-          gap: "2px",
-          marginTop: "12px",
-        }}
-      >
-        {photos.map((photo) => (
-          <img
-            key={photo.id}
-            src={photo.public_url}
-            alt={`Grid position ${photo.grid_position}`}
-            style={{
-              width: "100%",
-              aspectRatio: "1 / 1",
-              objectFit: "cover",
-              background: "var(--surface)",
-            }}
-          />
-        ))}
-      </div>
-
-      <div style={{ marginTop: "24px" }}>
+      <div className="section-block">
         <button onClick={handleFixMyFeed} disabled={loading} className="btn-primary">
           {loading ? "Analyzing…" : "Fix my feed"}
         </button>
+        {error && <p className="text-secondary label-block">{error}</p>}
       </div>
-      {error && (
-        <p className="text-secondary" style={{ fontSize: "13px", marginTop: "8px" }}>
-          {error}
-        </p>
-      )}
 
       {result && (
-        <div className="hairline-top" style={{ marginTop: "24px", paddingTop: "24px" }}>
-          <h2 style={{ fontSize: "18px" }}>What&apos;s off</h2>
-          <ul style={{ paddingLeft: "18px", marginTop: "8px" }}>
+        <div className="section-block">
+          <h2>What&apos;s off</h2>
+          <ul className="prose content-block" style={{ paddingLeft: "18px" }}>
             {result.issues.map((issue, i) => (
-              <li key={i} style={{ fontSize: "14px", marginBottom: "6px" }}>
+              <li key={i} style={{ marginBottom: "8px" }}>
                 {issue}
               </li>
             ))}
           </ul>
 
           {result.suggested_order.length === 0 && result.shot_list.length > 0 && (
-            <>
-              <h2 style={{ fontSize: "18px", marginTop: "24px" }}>What to shoot next</h2>
-              <ul style={{ paddingLeft: "18px", marginTop: "8px" }}>
+            <div className="content-block">
+              <h2>What to shoot next</h2>
+              <ul className="prose content-block" style={{ paddingLeft: "18px" }}>
                 {result.shot_list.map((shot, i) => (
-                  <li key={i} style={{ fontSize: "14px", marginBottom: "6px" }}>
+                  <li key={i} style={{ marginBottom: "8px" }}>
                     {shot}
                   </li>
                 ))}
               </ul>
-            </>
+            </div>
           )}
         </div>
       )}
