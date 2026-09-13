@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { anthropic } from "@/lib/anthropic";
+import convertHeic from "heic-convert";
 
 const PROMPT = `Analyze this photo and return ONLY valid JSON in this exact shape, with no other text before or after it:
 {
@@ -22,18 +23,30 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "No image uploaded" }, { status: 400 });
     }
 
-    if (!SUPPORTED_MEDIA_TYPES.includes(file.type as (typeof SUPPORTED_MEDIA_TYPES)[number])) {
+    const isHeic =
+      file.type === "image/heic" ||
+      file.type === "image/heif" ||
+      /\.(heic|heif)$/i.test(file.name);
+
+    let base64: string;
+    let mediaType: (typeof SUPPORTED_MEDIA_TYPES)[number];
+
+    if (isHeic) {
+      const inputBuffer = Buffer.from(await file.arrayBuffer());
+      const outputBuffer = await convertHeic({ buffer: inputBuffer, format: "JPEG", quality: 0.9 });
+      base64 = Buffer.from(outputBuffer).toString("base64");
+      mediaType = "image/jpeg";
+    } else if (SUPPORTED_MEDIA_TYPES.includes(file.type as (typeof SUPPORTED_MEDIA_TYPES)[number])) {
+      base64 = Buffer.from(await file.arrayBuffer()).toString("base64");
+      mediaType = file.type as (typeof SUPPORTED_MEDIA_TYPES)[number];
+    } else {
       return NextResponse.json(
         {
-          error: `Unsupported image type "${file.type || "unknown"}". Please upload a JPEG, PNG, GIF, or WEBP image (HEIC/HEIC photos from iPhones aren't supported — convert to JPEG first).`,
+          error: `Unsupported image type "${file.type || "unknown"}". Please upload a JPEG, PNG, GIF, WEBP, or HEIC image.`,
         },
         { status: 400 }
       );
     }
-
-    const bytes = await file.arrayBuffer();
-    const base64 = Buffer.from(bytes).toString("base64");
-    const mediaType = file.type as (typeof SUPPORTED_MEDIA_TYPES)[number];
 
     const response = await anthropic.messages.create({
       model: "claude-opus-5",
