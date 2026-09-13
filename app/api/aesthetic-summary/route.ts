@@ -13,24 +13,28 @@ Analysis data:
 `;
 
 export async function POST(req: NextRequest) {
-  const { analyses } = await req.json();
+  try {
+    const { analyses } = await req.json();
 
-  if (!Array.isArray(analyses) || analyses.length === 0) {
-    return NextResponse.json({ error: "No analyses provided" }, { status: 400 });
+    if (!Array.isArray(analyses) || analyses.length === 0) {
+      return NextResponse.json({ error: "No analyses provided" }, { status: 400 });
+    }
+
+    const response = await anthropic.messages.create({
+      model: "claude-opus-5",
+      max_tokens: 1024,
+      messages: [
+        {
+          role: "user",
+          content: PROMPT + JSON.stringify(analyses, null, 2),
+        },
+      ],
+    });
+
+    const textBlock = response.content.find((b) => b.type === "text");
+
+    return NextResponse.json({ result: textBlock?.text ?? "" });
+  } catch (err) {
+    return NextResponse.json({ error: err instanceof Error ? err.message : String(err) }, { status: 500 });
   }
-
-  const response = await anthropic.messages.create({
-    model: "claude-opus-5",
-    max_tokens: 1024,
-    messages: [
-      {
-        role: "user",
-        content: PROMPT + JSON.stringify(analyses, null, 2),
-      },
-    ],
-  });
-
-  const textBlock = response.content.find((b) => b.type === "text");
-
-  return NextResponse.json({ result: textBlock?.text ?? "" });
 }

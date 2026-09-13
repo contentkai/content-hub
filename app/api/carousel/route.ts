@@ -21,21 +21,25 @@ Return ONLY valid JSON in this exact shape, with no other text before or after i
 }`;
 
 export async function POST(req: NextRequest) {
-  const { photos } = await req.json();
+  try {
+    const { photos } = await req.json();
 
-  if (!Array.isArray(photos) || photos.length === 0) {
-    return NextResponse.json({ error: "No photos provided" }, { status: 400 });
+    if (!Array.isArray(photos) || photos.length === 0) {
+      return NextResponse.json({ error: "No photos provided" }, { status: 400 });
+    }
+
+    const prompt = PROMPT + JSON.stringify(photos, null, 2) + INSTRUCTIONS;
+
+    const response = await anthropic.messages.create({
+      model: "claude-opus-5",
+      max_tokens: 2048,
+      messages: [{ role: "user", content: prompt }],
+    });
+
+    const textBlock = response.content.find((b) => b.type === "text");
+
+    return NextResponse.json({ result: textBlock?.text ?? "" });
+  } catch (err) {
+    return NextResponse.json({ error: err instanceof Error ? err.message : String(err) }, { status: 500 });
   }
-
-  const prompt = PROMPT + JSON.stringify(photos, null, 2) + INSTRUCTIONS;
-
-  const response = await anthropic.messages.create({
-    model: "claude-opus-5",
-    max_tokens: 2048,
-    messages: [{ role: "user", content: prompt }],
-  });
-
-  const textBlock = response.content.find((b) => b.type === "text");
-
-  return NextResponse.json({ result: textBlock?.text ?? "" });
 }

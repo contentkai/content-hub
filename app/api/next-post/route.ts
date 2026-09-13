@@ -22,28 +22,32 @@ Return ONLY valid JSON in this exact shape, with no other text before or after i
 }`;
 
 export async function POST(req: NextRequest) {
-  const { candidates, aestheticProfile, recentPosts } = await req.json();
+  try {
+    const { candidates, aestheticProfile, recentPosts } = await req.json();
 
-  if (!Array.isArray(candidates) || candidates.length === 0) {
-    return NextResponse.json({ error: "No candidate photos provided" }, { status: 400 });
+    if (!Array.isArray(candidates) || candidates.length === 0) {
+      return NextResponse.json({ error: "No candidate photos provided" }, { status: 400 });
+    }
+
+    const prompt =
+      PROMPT +
+      JSON.stringify(aestheticProfile, null, 2) +
+      "\n\n3 most recent posts in the grid (grid_position 1 = most recent):\n" +
+      JSON.stringify(recentPosts, null, 2) +
+      "\n\nCandidate photos:\n" +
+      JSON.stringify(candidates, null, 2) +
+      INSTRUCTIONS;
+
+    const response = await anthropic.messages.create({
+      model: "claude-opus-5",
+      max_tokens: 1024,
+      messages: [{ role: "user", content: prompt }],
+    });
+
+    const textBlock = response.content.find((b) => b.type === "text");
+
+    return NextResponse.json({ result: textBlock?.text ?? "" });
+  } catch (err) {
+    return NextResponse.json({ error: err instanceof Error ? err.message : String(err) }, { status: 500 });
   }
-
-  const prompt =
-    PROMPT +
-    JSON.stringify(aestheticProfile, null, 2) +
-    "\n\n3 most recent posts in the grid (grid_position 1 = most recent):\n" +
-    JSON.stringify(recentPosts, null, 2) +
-    "\n\nCandidate photos:\n" +
-    JSON.stringify(candidates, null, 2) +
-    INSTRUCTIONS;
-
-  const response = await anthropic.messages.create({
-    model: "claude-opus-5",
-    max_tokens: 1024,
-    messages: [{ role: "user", content: prompt }],
-  });
-
-  const textBlock = response.content.find((b) => b.type === "text");
-
-  return NextResponse.json({ result: textBlock?.text ?? "" });
 }

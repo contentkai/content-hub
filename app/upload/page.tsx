@@ -124,6 +124,8 @@ export default function UploadPage() {
         }
         await supabase.from("photos").update({ analysis }).eq("id", insertData.id);
         await loadPhotos();
+      } else {
+        setError(data.error ?? "Vision analysis failed");
       }
     } catch (err) {
       setError(String(err));
