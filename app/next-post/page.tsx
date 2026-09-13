@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import CaptionWriter from "@/components/CaptionWriter";
+import SuggestEdits from "@/components/SuggestEdits";
 import {
   fetchNextPostRecommendation,
   type CandidatePhoto,
@@ -49,6 +50,11 @@ export default function NextPostPage() {
           />
           <p>{recommendation.why}</p>
           <CaptionWriter analysis={chosenPhoto.analysis} />
+          <SuggestEdits
+            photoId={chosenPhoto.id}
+            publicUrl={chosenPhoto.public_url}
+            analysis={chosenPhoto.analysis}
+          />
         </div>
       )}
 
