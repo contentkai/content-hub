@@ -21,6 +21,7 @@ type EditValues = {
 
 type Variation = EditValues & {
   previewDataUrl?: string;
+  previewError?: string;
   used?: boolean;
 };
 
@@ -85,7 +86,7 @@ export default function SuggestEdits({ photoId, publicUrl, analysis, primary }: 
         });
         const editData = await editRes.json();
         if (!editRes.ok) {
-          return { ...v, previewDataUrl: undefined };
+          return { ...v, previewDataUrl: undefined, previewError: editData.error ?? `Request failed (${editRes.status})` };
         }
         return { ...v, previewDataUrl: `data:${editData.mediaType};base64,${editData.imageBase64}` };
       })
@@ -164,7 +165,9 @@ export default function SuggestEdits({ photoId, publicUrl, analysis, primary }: 
                   style={{ width: "100%", aspectRatio: "1 / 1", objectFit: "cover", background: "var(--surface)" }}
                 />
               ) : (
-                <p className="text-secondary label-block">Preview failed</p>
+                <p className="text-secondary label-block">
+                  Preview failed: {v.previewError ?? "unknown error"}
+                </p>
               )}
               <p className="quote content-block">{v.reason}</p>
               <div className="label-block">

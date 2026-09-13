@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import sharp from "sharp";
+import convertHeic from "heic-convert";
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
@@ -20,9 +21,26 @@ export async function POST(req: NextRequest) {
 
     const imageRes = await fetch(photoUrl);
     if (!imageRes.ok) {
-      return NextResponse.json({ error: `Failed to fetch source image (${imageRes.status})` }, { status: 400 });
+      const body = await imageRes.text().catch(() => "");
+      return NextResponse.json(
+        { error: `Failed to fetch source image (${imageRes.status} ${imageRes.statusText}): ${body || photoUrl}` },
+        { status: 400 }
+      );
     }
-    const inputBuffer = Buffer.from(await imageRes.arrayBuffer());
+    let inputBuffer = Buffer.from(await imageRes.arrayBuffer());
+
+    // sharp's bundled HEIF decoder is unreliable on real-world HEIC files (fails with
+    // "bad seek" / "Decoder plugin generated an error"), so convert to JPEG first via
+    // heic-convert — the same approach already used for vision analysis.
+    const contentType = imageRes.headers.get("content-type") ?? "";
+    const isHeic =
+      contentType.includes("heic") ||
+      contentType.includes("heif") ||
+      /\.(heic|heif)(\?|$)/i.test(photoUrl);
+    if (isHeic) {
+      const converted = await convertHeic({ buffer: inputBuffer, format: "JPEG", quality: 0.9 });
+      inputBuffer = Buffer.from(converted);
+    }
 
     // exposure/contrast via linear(a, b): output = input * a + b
     const contrastSlope = 1 + contrastVal * 0.05; // 0.5 .. 1.5
