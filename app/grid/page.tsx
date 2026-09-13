@@ -36,6 +36,21 @@ export default function GridPage() {
   const [targetLoading, setTargetLoading] = useState(false);
   const [targetError, setTargetError] = useState("");
 
+  async function loadCandidates() {
+    const { data, error: candidatesError } = await supabase
+      .from("photos")
+      .select("id, public_url, analysis")
+      .eq("source", "new_candidate")
+      .not("analysis", "is", null)
+      .order("id", { ascending: true });
+    if (candidatesError) {
+      setError(candidatesError.message);
+    } else {
+      setCandidatePhotos((data ?? []) as Photo[]);
+    }
+    return data ?? [];
+  }
+
   useEffect(() => {
     async function load() {
       const { data: photoRows, error: photoError } = await supabase
@@ -67,6 +82,8 @@ export default function GridPage() {
       if (targetRows && targetRows.length > 0) {
         setTargetProfile(targetRows[0].summary as AestheticProfile);
       }
+
+      await loadCandidates();
     }
     load();
   }, []);
@@ -159,19 +176,13 @@ export default function GridPage() {
       return;
     }
 
-    const { data: candidates, error: candidatesError } = await supabase
-      .from("photos")
-      .select("id, public_url, analysis")
-      .eq("source", "new_candidate")
-      .not("analysis", "is", null);
+    const candidates = await loadCandidates();
 
-    if (candidatesError) {
-      setError(candidatesError.message);
+    if (candidates.length === 0) {
+      setError("No candidate photos with analysis found");
       setLoading(false);
       return;
     }
-
-    setCandidatePhotos((candidates ?? []) as Photo[]);
 
     const res = await fetch("/api/fix-feed", {
       method: "POST",
@@ -209,39 +220,149 @@ export default function GridPage() {
     return candidatePhotos.find((p) => String(p.id) === id);
   }
 
+  type CandidateSlot = { photo: Photo; badge?: number; reason?: string; deprioritized: boolean };
+
+  function getOrderedCandidates(): CandidateSlot[] {
+    if (!result) {
+      return candidatePhotos.map((photo) => ({ photo, deprioritized: false }));
+    }
+
+    const top3 = result.suggested_order.slice(0, 3);
+    const restSuggested = result.suggested_order.slice(3);
+
+    const topSlots: CandidateSlot[] = top3.flatMap((item, i) => {
+      const photo = candidateById(item.photo_id);
+      return photo ? [{ photo, badge: i + 1, reason: item.reason, deprioritized: false }] : [];
+    });
+
+    const deprioritizedSlots: CandidateSlot[] = [...restSuggested, ...result.left_out].flatMap((item) => {
+      const photo = candidateById(item.photo_id);
+      return photo ? [{ photo, reason: item.reason, deprioritized: true }] : [];
+    });
+
+    const mentionedIds = new Set([
+      ...result.suggested_order.map((i) => i.photo_id),
+      ...result.left_out.map((i) => i.photo_id),
+    ]);
+    const unmentionedSlots: CandidateSlot[] = candidatePhotos
+      .filter((p) => !mentionedIds.has(String(p.id)))
+      .map((photo) => ({ photo, deprioritized: false }));
+
+    return [...topSlots, ...deprioritizedSlots, ...unmentionedSlots];
+  }
+
   return (
-    <div>
-      <h1>Grid</h1>
+    <div style={{ maxWidth: "640px", margin: "0 auto", padding: "24px 20px 64px" }}>
+      <h1 style={{ fontSize: "28px" }}>Grid</h1>
 
       {profile && (
-        <div>
-          <h2>Your current aesthetic</h2>
-          <p>{profile.tags.join(", ")}</p>
-          <p>{profile.description}</p>
+        <div style={{ marginTop: "24px" }}>
+          <h2 style={{ fontSize: "18px" }}>Your current aesthetic</h2>
+          <p className="text-secondary" style={{ fontSize: "13px", marginTop: "8px" }}>
+            {profile.tags.join(" · ")}
+          </p>
+          <p className="serif" style={{ fontSize: "16px", marginTop: "6px", lineHeight: 1.5 }}>
+            {profile.description}
+          </p>
         </div>
       )}
 
-      <div>
-        <h2>Your target aesthetic</h2>
-        <button onClick={handleGenerateTargetAesthetic} disabled={targetLoading}>
-          {targetLoading ? "Generating..." : "Generate target aesthetic"}
-        </button>
-        {targetError && <p>Error: {targetError}</p>}
+      <div className="hairline-top" style={{ marginTop: "24px", paddingTop: "24px" }}>
+        <h2 style={{ fontSize: "18px" }}>Your target aesthetic</h2>
+        <div style={{ marginTop: "8px" }}>
+          <button onClick={handleGenerateTargetAesthetic} disabled={targetLoading} className="link">
+            {targetLoading ? "Generating…" : "Generate target aesthetic"}
+          </button>
+        </div>
+        {targetError && (
+          <p className="text-secondary" style={{ fontSize: "13px", marginTop: "8px" }}>
+            {targetError}
+          </p>
+        )}
         {targetProfile && (
           <>
-            <p>{targetProfile.tags.join(", ")}</p>
-            <p>{targetProfile.description}</p>
+            <p className="text-secondary" style={{ fontSize: "13px", marginTop: "8px" }}>
+              {targetProfile.tags.join(" · ")}
+            </p>
+            <p className="serif" style={{ fontSize: "16px", marginTop: "6px", lineHeight: 1.5 }}>
+              {targetProfile.description}
+            </p>
           </>
         )}
       </div>
 
+      <h2 style={{ fontSize: "18px", marginTop: "32px" }}>Candidates</h2>
+      <div
+        style={{
+          border: "1px dashed var(--hairline)",
+          padding: "8px",
+          marginTop: "12px",
+        }}
+      >
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(3, 1fr)",
+            gap: "2px",
+          }}
+        >
+          {getOrderedCandidates().map((slot) => (
+            <div
+              key={slot.photo.id}
+              style={{ position: "relative", opacity: slot.deprioritized ? 0.45 : 1 }}
+              title={slot.deprioritized ? slot.reason : undefined}
+            >
+              <img
+                src={slot.photo.public_url}
+                alt={`Candidate ${slot.photo.id}`}
+                style={{
+                  width: "100%",
+                  aspectRatio: "1 / 1",
+                  objectFit: "cover",
+                  display: "block",
+                  background: "var(--surface)",
+                }}
+              />
+              {slot.badge && (
+                <span
+                  style={{
+                    position: "absolute",
+                    top: "4px",
+                    left: "4px",
+                    background: "var(--accent)",
+                    color: "var(--paper)",
+                    borderRadius: "50%",
+                    width: "20px",
+                    height: "20px",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: "12px",
+                  }}
+                >
+                  {slot.badge}
+                </span>
+              )}
+              {slot.reason && !slot.deprioritized && (
+                <p className="serif text-secondary" style={{ fontSize: "12px", margin: "6px 0" }}>
+                  {slot.reason}
+                </p>
+              )}
+              {slot.badge && (
+                <CaptionWriter analysis={slot.photo.analysis as Record<string, unknown>} />
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <h2 style={{ fontSize: "18px", marginTop: "32px" }}>Your grid</h2>
       <div
         style={{
           display: "grid",
           gridTemplateColumns: "repeat(3, 1fr)",
           gap: "2px",
-          maxWidth: "480px",
-          margin: "0 auto",
+          marginTop: "12px",
         }}
       >
         {photos.map((photo) => (
@@ -249,81 +370,46 @@ export default function GridPage() {
             key={photo.id}
             src={photo.public_url}
             alt={`Grid position ${photo.grid_position}`}
-            style={{ width: "100%", aspectRatio: "1 / 1", objectFit: "cover" }}
+            style={{
+              width: "100%",
+              aspectRatio: "1 / 1",
+              objectFit: "cover",
+              background: "var(--surface)",
+            }}
           />
         ))}
       </div>
 
-      <button onClick={handleFixMyFeed} disabled={loading}>
-        {loading ? "Analyzing..." : "Fix my feed"}
-      </button>
-      {error && <p>Error: {error}</p>}
+      <div style={{ marginTop: "24px" }}>
+        <button onClick={handleFixMyFeed} disabled={loading} className="btn-primary">
+          {loading ? "Analyzing…" : "Fix my feed"}
+        </button>
+      </div>
+      {error && (
+        <p className="text-secondary" style={{ fontSize: "13px", marginTop: "8px" }}>
+          {error}
+        </p>
+      )}
 
       {result && (
-        <div>
-          <h2>What&apos;s off</h2>
-          <ul>
+        <div className="hairline-top" style={{ marginTop: "24px", paddingTop: "24px" }}>
+          <h2 style={{ fontSize: "18px" }}>What&apos;s off</h2>
+          <ul style={{ paddingLeft: "18px", marginTop: "8px" }}>
             {result.issues.map((issue, i) => (
-              <li key={i}>{issue}</li>
+              <li key={i} style={{ fontSize: "14px", marginBottom: "6px" }}>
+                {issue}
+              </li>
             ))}
           </ul>
 
-          {result.suggested_order.length > 0 && (
-            <>
-              <h2>Suggested next posts</h2>
-              <div style={{ display: "flex", gap: "16px", overflowX: "auto" }}>
-                {result.suggested_order.map((item, i) => {
-                  const photo = candidateById(item.photo_id);
-                  return (
-                    <div key={item.photo_id} style={{ flex: "0 0 auto", width: "220px" }}>
-                      <p>Next {i + 1}</p>
-                      {photo && (
-                        <img
-                          src={photo.public_url}
-                          alt={`Photo ${item.photo_id}`}
-                          width={220}
-                          style={{ objectFit: "cover" }}
-                        />
-                      )}
-                      <p>{item.reason}</p>
-                      {photo?.analysis && <CaptionWriter analysis={photo.analysis} />}
-                    </div>
-                  );
-                })}
-              </div>
-            </>
-          )}
-
-          {result.left_out.length > 0 && (
-            <>
-              <h2>Not ready yet</h2>
-              <div style={{ display: "flex", gap: "16px", overflowX: "auto" }}>
-                {result.left_out.map((item) => {
-                  const photo = candidateById(item.photo_id);
-                  return (
-                    <div key={item.photo_id} style={{ flex: "0 0 auto", width: "220px" }}>
-                      {photo && (
-                        <img
-                          src={photo.public_url}
-                          alt={`Photo ${item.photo_id}`}
-                          width={220}
-                          style={{ objectFit: "cover" }}
-                        />
-                      )}
-                      <p>{item.reason}</p>
-                    </div>
-                  );
-                })}
-              </div>
-            </>
-          )}
-
           {result.suggested_order.length === 0 && result.shot_list.length > 0 && (
             <>
-              <h2>What to shoot next</h2>
-              <ul>
+              <h2 style={{ fontSize: "18px", marginTop: "24px" }}>What to shoot next</h2>
+              <ul style={{ paddingLeft: "18px", marginTop: "8px" }}>
                 {result.shot_list.map((shot, i) => (
-                  <li key={i}>{shot}</li>
+                  <li key={i} style={{ fontSize: "14px", marginBottom: "6px" }}>
+                    {shot}
+                  </li>
                 ))}
               </ul>
             </>

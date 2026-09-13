@@ -116,74 +116,107 @@ export default function CarouselPage() {
   }
 
   return (
-    <div>
-      <h1>Carousel</h1>
+    <div style={{ maxWidth: "640px", margin: "0 auto", padding: "24px 20px 64px" }}>
+      <h1 style={{ fontSize: "28px" }}>Carousel</h1>
 
-      <h2>Candidate Photos</h2>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, 150px)", gap: "12px" }}>
+      <h2 style={{ fontSize: "18px", marginTop: "24px" }}>Candidate photos</h2>
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(3, 1fr)",
+          gap: "2px",
+          marginTop: "12px",
+        }}
+      >
         {photos.map((photo) => (
-          <label key={photo.id} style={{ display: "block", cursor: "pointer" }}>
+          <label key={photo.id} style={{ position: "relative", cursor: "pointer", display: "block" }}>
             <input
               type="checkbox"
               checked={selectedIds.has(photo.id)}
               onChange={() => toggleSelected(photo.id)}
+              style={{ position: "absolute", top: "6px", left: "6px", zIndex: 1 }}
             />
             <img
               src={photo.public_url}
               alt={`Photo ${photo.id}`}
-              width={150}
-              height={150}
-              style={{ objectFit: "cover" }}
+              style={{
+                width: "100%",
+                aspectRatio: "1 / 1",
+                objectFit: "cover",
+                display: "block",
+                background: "var(--surface)",
+                opacity: selectedIds.has(photo.id) ? 1 : 0.55,
+              }}
             />
           </label>
         ))}
       </div>
 
-      <button onClick={handleBuildCarousel} disabled={loading}>
-        {loading ? "Building..." : "Build carousel"}
-      </button>
-      {error && <p>Error: {error}</p>}
+      <div style={{ marginTop: "24px" }}>
+        <button onClick={handleBuildCarousel} disabled={loading} className="btn-primary">
+          {loading ? "Building…" : "Build carousel"}
+        </button>
+      </div>
+      {error && (
+        <p className="text-secondary" style={{ fontSize: "13px", marginTop: "8px" }}>
+          {error}
+        </p>
+      )}
 
       {result && (
-        <div>
-          <h2>Sequence</h2>
-          <div style={{ display: "flex", gap: "16px", overflowX: "auto" }}>
+        <div className="hairline-top" style={{ marginTop: "24px", paddingTop: "24px" }}>
+          <h2 style={{ fontSize: "18px" }}>Sequence</h2>
+          <div style={{ display: "flex", gap: "20px", marginTop: "12px", overflowX: "auto" }}>
             {result.sequence.map((item, i) => {
               const photo = photoById(item.photo_id);
               return (
-                <div key={item.photo_id} style={{ flex: "0 0 auto", width: "220px" }}>
-                  <p>Slide {i + 1}</p>
+                <div key={item.photo_id} style={{ flex: "0 0 auto", width: "200px" }}>
+                  <p className="text-secondary" style={{ fontSize: "12px", marginBottom: "6px" }}>
+                    Slide {i + 1}
+                  </p>
                   {photo && (
                     <img
                       src={photo.public_url}
                       alt={`Photo ${item.photo_id}`}
-                      width={220}
-                      style={{ objectFit: "cover" }}
+                      style={{
+                        width: "100%",
+                        aspectRatio: "1 / 1",
+                        objectFit: "cover",
+                        background: "var(--surface)",
+                      }}
                     />
                   )}
-                  <p>{item.reason}</p>
+                  <p className="serif" style={{ fontSize: "14px", marginTop: "8px" }}>
+                    {item.reason}
+                  </p>
                 </div>
               );
             })}
           </div>
 
           {result.dropped.length > 0 && (
-            <div>
-              <h2>Dropped</h2>
-              <div style={{ display: "flex", gap: "16px", overflowX: "auto" }}>
+            <div style={{ marginTop: "24px" }}>
+              <h2 style={{ fontSize: "18px" }}>Dropped</h2>
+              <div style={{ display: "flex", gap: "20px", marginTop: "12px", overflowX: "auto" }}>
                 {result.dropped.map((item) => {
                   const photo = photoById(item.photo_id);
                   return (
-                    <div key={item.photo_id} style={{ flex: "0 0 auto", width: "220px" }}>
+                    <div key={item.photo_id} style={{ flex: "0 0 auto", width: "200px", opacity: 0.6 }}>
                       {photo && (
                         <img
                           src={photo.public_url}
                           alt={`Photo ${item.photo_id}`}
-                          width={220}
-                          style={{ objectFit: "cover" }}
+                          style={{
+                            width: "100%",
+                            aspectRatio: "1 / 1",
+                            objectFit: "cover",
+                            background: "var(--surface)",
+                          }}
                         />
                       )}
-                      <p>{item.reason}</p>
+                      <p className="serif" style={{ fontSize: "14px", marginTop: "8px" }}>
+                        {item.reason}
+                      </p>
                     </div>
                   );
                 })}

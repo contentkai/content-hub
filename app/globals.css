@@ -1,26 +1,135 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --bg: #0b1210;
+  --surface: #14201d;
+  --paper: #f4f2ec;
+  --accent: #1c7a7d;
+  --text-secondary: #8a8578;
+  --hairline: rgba(244, 242, 236, 0.12);
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+* {
+  box-sizing: border-box;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html,
+body {
+  background: var(--bg);
+  color: var(--paper);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-instrument-sans), sans-serif;
+}
+
+h1,
+h2,
+h3,
+.serif {
+  font-family: var(--font-fraunces), serif;
+  font-weight: 500;
+  margin: 0;
+}
+
+button,
+input,
+textarea,
+select {
+  font-family: inherit;
+  color: inherit;
+}
+
+a {
+  color: inherit;
+}
+
+/* Plain text link — used for every secondary action */
+.link {
+  display: inline-block;
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  color: var(--paper);
+  font-family: var(--font-instrument-sans), sans-serif;
+  font-size: 14px;
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  cursor: pointer;
+}
+.link:hover {
+  color: var(--accent);
+  border-bottom-color: var(--hairline);
+}
+.link:disabled {
+  color: var(--text-secondary);
+  cursor: default;
+}
+
+/* Solid filled button — at most one per screen, the primary action */
+.btn-primary {
+  display: inline-block;
+  background: var(--paper);
+  color: var(--bg);
+  border: none;
+  border-radius: 0;
+  padding: 12px 22px;
+  font-family: var(--font-instrument-sans), sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+}
+.btn-primary:disabled {
+  background: var(--text-secondary);
+  color: var(--bg);
+  cursor: default;
+}
+
+.label-accent {
+  color: var(--accent);
+  font-family: var(--font-instrument-sans), sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin: 0 0 8px;
+}
+
+.text-secondary {
+  color: var(--text-secondary);
+}
+
+.hairline-top {
+  border: none;
+  border-top: 1px solid var(--hairline);
+}
+
+input[type="text"],
+input[type="number"],
+textarea {
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  color: var(--paper);
+  font-family: var(--font-instrument-sans), sans-serif;
+  padding: 8px 10px;
+  border-radius: 0;
+}
+
+input[type="radio"],
+input[type="checkbox"] {
+  accent-color: var(--accent);
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.fade-in {
+  animation: fadeIn 0.6s ease-out;
 }

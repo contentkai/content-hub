@@ -6,9 +6,10 @@ import { supabase } from "@/lib/supabase";
 type Props = {
   analysis: Record<string, unknown>;
   limit?: number;
+  primary?: boolean;
 };
 
-export default function CaptionWriter({ analysis, limit }: Props) {
+export default function CaptionWriter({ analysis, limit, primary }: Props) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [captions, setCaptions] = useState<string[] | null>(null);
@@ -90,21 +91,43 @@ export default function CaptionWriter({ analysis, limit }: Props) {
 
   return (
     <div>
-      <button onClick={handleWriteCaption} disabled={loading}>
-        {loading ? "Writing..." : "Write a caption"}
+      <button
+        onClick={handleWriteCaption}
+        disabled={loading}
+        className={primary ? "btn-primary" : "link"}
+      >
+        {loading ? "Writing…" : "Write a caption"}
       </button>
-      {error && <p>Error: {error}</p>}
+      {error && (
+        <p className="text-secondary" style={{ fontSize: "13px", marginTop: "8px" }}>
+          {error}
+        </p>
+      )}
       {captions && (
         <div>
           {(limit ? captions.slice(0, limit) : captions).map((caption, i) => (
-            <div key={i} style={{ marginTop: "8px" }}>
-              <p>{caption}</p>
-              <button onClick={() => handleUseThis(i)} disabled={usedIndex === i}>
-                {usedIndex === i ? "Copied" : "Use this"}
-              </button>
-              <button onClick={() => handleNeverSayAgain(i)} disabled={bannedIndexes.has(i)}>
-                {bannedIndexes.has(i) ? "Banned" : "Never say this again"}
-              </button>
+            <div key={i} style={{ marginTop: "16px" }}>
+              <p className="serif" style={{ fontSize: "16px", fontWeight: 400 }}>
+                {caption}
+              </p>
+              <div style={{ display: "flex", gap: "16px", marginTop: "6px" }}>
+                <button
+                  onClick={() => handleUseThis(i)}
+                  disabled={usedIndex === i}
+                  className="link"
+                  style={{ fontSize: "13px" }}
+                >
+                  {usedIndex === i ? "Copied" : "Use this"}
+                </button>
+                <button
+                  onClick={() => handleNeverSayAgain(i)}
+                  disabled={bannedIndexes.has(i)}
+                  className="link"
+                  style={{ fontSize: "13px" }}
+                >
+                  {bannedIndexes.has(i) ? "Banned" : "Never say this again"}
+                </button>
+              </div>
             </div>
           ))}
         </div>

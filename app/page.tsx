@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import CaptionWriter from "@/components/CaptionWriter";
+import SuggestEdits from "@/components/SuggestEdits";
 import {
   fetchNextPostRecommendation,
   type CandidatePhoto,
@@ -35,40 +36,78 @@ export default function HomePage() {
   }, []);
 
   return (
-    <div style={{ maxWidth: "480px", margin: "0 auto", padding: "32px 16px", textAlign: "center" }}>
-      {loading && <p style={{ color: "#888" }}>Finding today&apos;s recommendation...</p>}
-      {error && <p style={{ color: "#888" }}>{error}</p>}
+    <div style={{ maxWidth: "640px", margin: "0 auto", width: "100%" }}>
+      {loading && (
+        <p className="text-secondary" style={{ padding: "24px 20px", fontSize: "14px" }}>
+          Finding today&apos;s recommendation…
+        </p>
+      )}
+      {error && (
+        <p className="text-secondary" style={{ padding: "24px 20px", fontSize: "14px" }}>
+          {error}
+        </p>
+      )}
 
       {recommendation && recommendation.recommend && chosenPhoto && (
         <div>
           <img
             src={chosenPhoto.public_url}
             alt={`Photo ${chosenPhoto.id}`}
-            style={{ width: "100%", display: "block" }}
+            className="fade-in"
+            style={{ width: "100%", display: "block", background: "var(--surface)" }}
           />
-          <p style={{ color: "#555", marginTop: "16px" }}>{recommendation.why}</p>
-          <div style={{ marginTop: "12px" }}>
-            <CaptionWriter analysis={chosenPhoto.analysis} limit={1} />
+          <div style={{ padding: "24px 20px 0" }}>
+            <p className="label-accent fade-in">Why</p>
+            <p className="serif fade-in" style={{ fontSize: "20px", lineHeight: 1.5, fontWeight: 400 }}>
+              {recommendation.why}
+            </p>
+
+            <div style={{ marginTop: "24px" }}>
+              <CaptionWriter analysis={chosenPhoto.analysis} primary />
+            </div>
+
+            <div style={{ marginTop: "16px" }}>
+              <SuggestEdits
+                photoId={chosenPhoto.id}
+                publicUrl={chosenPhoto.public_url}
+                analysis={chosenPhoto.analysis}
+              />
+            </div>
+
+            <div
+              className="hairline-top"
+              style={{ marginTop: "32px", paddingTop: "16px", display: "flex", gap: "20px" }}
+            >
+              <Link href="/carousel" className="link">
+                Build a carousel
+              </Link>
+              <Link href="/upload" className="link">
+                Upload photos
+              </Link>
+            </div>
           </div>
         </div>
       )}
 
       {recommendation && !recommendation.recommend && (
-        <p style={{ color: "#555" }}>{recommendation.reason}</p>
+        <div style={{ padding: "24px 20px 0" }}>
+          <p className="label-accent">Why</p>
+          <p className="serif" style={{ fontSize: "20px", lineHeight: 1.5, fontWeight: 400 }}>
+            {recommendation.reason}
+          </p>
+          <div
+            className="hairline-top"
+            style={{ marginTop: "32px", paddingTop: "16px", display: "flex", gap: "20px" }}
+          >
+            <Link href="/carousel" className="link">
+              Build a carousel
+            </Link>
+            <Link href="/upload" className="link">
+              Upload photos
+            </Link>
+          </div>
+        </div>
       )}
-
-      <div
-        style={{
-          marginTop: "32px",
-          display: "flex",
-          gap: "12px",
-          justifyContent: "center",
-          fontSize: "14px",
-        }}
-      >
-        <Link href="/carousel">Build a carousel</Link>
-        <Link href="/grid">Grid</Link>
-      </div>
     </div>
   );
 }

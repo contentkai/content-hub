@@ -7,6 +7,7 @@ type Props = {
   photoId: number;
   publicUrl: string;
   analysis: Record<string, unknown>;
+  primary?: boolean;
 };
 
 type EditValues = {
@@ -23,7 +24,7 @@ type Variation = EditValues & {
   used?: boolean;
 };
 
-export default function SuggestEdits({ photoId, publicUrl, analysis }: Props) {
+export default function SuggestEdits({ photoId, publicUrl, analysis, primary }: Props) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [variations, setVariations] = useState<Variation[] | null>(null);
@@ -132,27 +133,56 @@ export default function SuggestEdits({ photoId, publicUrl, analysis }: Props) {
 
   return (
     <div>
-      <button onClick={handleSuggestEdits} disabled={loading}>
-        {loading ? "Suggesting edits..." : "Suggest edits"}
+      <button
+        onClick={handleSuggestEdits}
+        disabled={loading}
+        className={primary ? "btn-primary" : "link"}
+      >
+        {loading ? "Suggesting edits…" : "Suggest edits"}
       </button>
-      {error && <p>Error: {error}</p>}
+      {error && (
+        <p className="text-secondary" style={{ fontSize: "13px", marginTop: "8px" }}>
+          {error}
+        </p>
+      )}
 
       {variations && (
-        <div style={{ display: "flex", gap: "16px", marginTop: "12px", overflowX: "auto" }}>
-          <div style={{ flex: "0 0 auto", width: "220px" }}>
-            <p>Original</p>
-            <img src={publicUrl} alt="Original" width={220} style={{ objectFit: "cover" }} />
+        <div style={{ display: "flex", gap: "20px", marginTop: "16px", overflowX: "auto" }}>
+          <div style={{ flex: "0 0 auto", width: "200px" }}>
+            <p className="text-secondary" style={{ fontSize: "12px", marginBottom: "6px" }}>
+              Original
+            </p>
+            <img
+              src={publicUrl}
+              alt="Original"
+              style={{ width: "100%", aspectRatio: "1 / 1", objectFit: "cover", background: "var(--surface)" }}
+            />
           </div>
           {variations.map((v, i) => (
-            <div key={i} style={{ flex: "0 0 auto", width: "220px" }}>
-              <p>{v.label}</p>
+            <div key={i} style={{ flex: "0 0 auto", width: "200px" }}>
+              <p className="text-secondary" style={{ fontSize: "12px", marginBottom: "6px" }}>
+                {v.label}
+              </p>
               {v.previewDataUrl ? (
-                <img src={v.previewDataUrl} alt={v.label} width={220} style={{ objectFit: "cover" }} />
+                <img
+                  src={v.previewDataUrl}
+                  alt={v.label}
+                  style={{ width: "100%", aspectRatio: "1 / 1", objectFit: "cover", background: "var(--surface)" }}
+                />
               ) : (
-                <p>Preview failed</p>
+                <p className="text-secondary" style={{ fontSize: "13px" }}>
+                  Preview failed
+                </p>
               )}
-              <p>{v.reason}</p>
-              <button onClick={() => handleUseThisVersion(i)} disabled={!v.previewDataUrl || v.used}>
+              <p className="serif" style={{ fontSize: "14px", marginTop: "8px" }}>
+                {v.reason}
+              </p>
+              <button
+                onClick={() => handleUseThisVersion(i)}
+                disabled={!v.previewDataUrl || v.used}
+                className="link"
+                style={{ fontSize: "13px", marginTop: "4px" }}
+              >
                 {v.used ? "Saved" : "Use this version"}
               </button>
             </div>
