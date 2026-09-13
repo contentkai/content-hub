@@ -9,7 +9,7 @@ Overall aesthetic profile:
 const INSTRUCTIONS = `
 
 Instructions:
-1. Pick the single best candidate by reasoning specifically about how it would sit next to the 3 most recent posts listed above (listed most recent first) — consider color, tone, and composition contrast or repetition with those actual neighbors, not just the general aesthetic profile.
+1. Pick the single best candidate by reasoning specifically about how it would sit next to the 3 most recent posts listed above (grid_position 1 is the most recent) — consider color, tone, and composition contrast or repetition with those actual neighbors, not just the general aesthetic profile.
 2. Return a one-sentence "why" explaining the choice in plain, specific language that can reference the actual recent posts (e.g. "your last post was a close-up portrait, this adds environmental space") — not generic praise.
 3. If none of the candidates are a good fit next to these recent posts, say so explicitly instead of forcing a pick.
 
@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
   const prompt =
     PROMPT +
     JSON.stringify(aestheticProfile, null, 2) +
-    "\n\n3 most recent posts in the grid (listed most recent first):\n" +
+    "\n\n3 most recent posts in the grid (grid_position 1 = most recent):\n" +
     JSON.stringify(recentPosts, null, 2) +
     "\n\nCandidate photos:\n" +
     JSON.stringify(candidates, null, 2) +

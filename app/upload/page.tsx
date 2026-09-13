@@ -9,6 +9,7 @@ type Photo = {
   public_url: string;
   source: string | null;
   analysis: Record<string, unknown> | null;
+  grid_position: number | null;
 };
 
 export default function UploadPage() {
@@ -55,12 +56,41 @@ export default function UploadPage() {
       .from("photos")
       .getPublicUrl(storagePath);
 
+    if (source === "existing_feed") {
+      const { data: existingRows, error: shiftFetchError } = await supabase
+        .from("photos")
+        .select("id, grid_position")
+        .eq("source", "existing_feed");
+
+      if (shiftFetchError) {
+        setError(shiftFetchError.message);
+        setUploading(false);
+        return;
+      }
+
+      const shiftErrors = await Promise.all(
+        (existingRows ?? []).map(({ id, grid_position }) =>
+          supabase
+            .from("photos")
+            .update({ grid_position: grid_position == null ? null : grid_position + 1 })
+            .eq("id", id)
+        )
+      );
+      const shiftError = shiftErrors.find((r) => r.error)?.error;
+      if (shiftError) {
+        setError(shiftError.message);
+        setUploading(false);
+        return;
+      }
+    }
+
     const { data: insertData, error: insertError } = await supabase
       .from("photos")
       .insert({
         storage_path: storagePath,
         public_url: publicUrlData.publicUrl,
         source,
+        grid_position: source === "existing_feed" ? 1 : null,
       })
       .select()
       .single();
@@ -147,6 +177,9 @@ export default function UploadPage() {
               style={{ objectFit: "cover" }}
             />
             <p>source: {photo.source ?? "(none)"}</p>
+            {photo.source === "existing_feed" && (
+              <p>grid_position: {photo.grid_position ?? "(none)"}</p>
+            )}
             <pre style={{ whiteSpace: "pre-wrap", fontSize: "10px" }}>
               {photo.analysis ? JSON.stringify(photo.analysis, null, 2) : "(no analysis yet)"}
             </pre>
