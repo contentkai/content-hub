@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import CaptionWriter from "@/components/CaptionWriter";
 import SuggestEdits from "@/components/SuggestEdits";
 import {
   fetchNextPostRecommendation,
@@ -17,11 +16,14 @@ export default function HomePage() {
   const [chosenPhoto, setChosenPhoto] = useState<CandidatePhoto | null>(null);
 
   useEffect(() => {
+    let cancelled = false;
+
     async function load() {
       setLoading(true);
       setError("");
 
       const result = await fetchNextPostRecommendation();
+      if (cancelled) return;
 
       if (!result.ok) {
         setError(result.error);
@@ -33,6 +35,10 @@ export default function HomePage() {
       setLoading(false);
     }
     load();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   return (
@@ -48,16 +54,30 @@ export default function HomePage() {
             src={chosenPhoto.public_url}
             alt={`Photo ${chosenPhoto.id}`}
             className="fade-in"
-            style={{ width: "100%", display: "block", background: "var(--surface)" }}
+            style={{
+              display: "block",
+              margin: "0 auto",
+              maxWidth: "420px",
+              width: "100%",
+              background: "var(--surface)",
+            }}
           />
 
-          <div className="content-block">
+          <div style={{ marginTop: "16px" }}>
             <p className="label fade-in">Why</p>
-            <p className="headline prose fade-in label-block">{recommendation.why}</p>
-          </div>
-
-          <div className="content-block">
-            <CaptionWriter analysis={chosenPhoto.analysis} primary />
+            <p
+              className="fade-in"
+              style={{
+                fontFamily: "var(--font-fraunces), serif",
+                fontWeight: 500,
+                fontSize: "18px",
+                lineHeight: 1.4,
+                marginTop: "6px",
+                maxWidth: "60ch",
+              }}
+            >
+              {recommendation.why}
+            </p>
           </div>
 
           <div className="content-block">
@@ -72,9 +92,6 @@ export default function HomePage() {
             className="hairline-top section-block"
             style={{ paddingTop: "24px", display: "flex", gap: "24px" }}
           >
-            <Link href="/carousel" className="link">
-              Build a carousel
-            </Link>
             <Link href="/upload" className="link">
               Upload photos
             </Link>
@@ -90,9 +107,6 @@ export default function HomePage() {
             className="hairline-top section-block"
             style={{ paddingTop: "24px", display: "flex", gap: "24px" }}
           >
-            <Link href="/carousel" className="link">
-              Build a carousel
-            </Link>
             <Link href="/upload" className="link">
               Upload photos
             </Link>

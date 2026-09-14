@@ -43,6 +43,12 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           <Link href="/insights" className="link">
             My Insights
           </Link>
+          <Link href="/carousel" className="link">
+            Carousel
+          </Link>
+          <Link href="/next-post" className="link">
+            Caption
+          </Link>
           <Link
             href="/upload"
             className="link"

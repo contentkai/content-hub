@@ -1,15 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 
 type Props = {
   analysis: Record<string, unknown>;
   limit?: number;
   primary?: boolean;
+  autoGenerate?: boolean;
 };
 
-export default function CaptionWriter({ analysis, limit, primary }: Props) {
+export default function CaptionWriter({ analysis, limit, primary, autoGenerate }: Props) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [captions, setCaptions] = useState<string[] | null>(null);
@@ -54,6 +55,14 @@ export default function CaptionWriter({ analysis, limit, primary }: Props) {
 
     setLoading(false);
   }
+
+  useEffect(() => {
+    if (autoGenerate) {
+      handleWriteCaption();
+    }
+    // Only ever auto-fire once, on mount.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   async function handleUseThis(index: number) {
     const caption = captions?.[index];

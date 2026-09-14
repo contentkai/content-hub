@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import CaptionWriter from "@/components/CaptionWriter";
 import SuggestEdits from "@/components/SuggestEdits";
 import {
@@ -10,56 +10,84 @@ import {
 } from "@/lib/nextPostRecommendation";
 
 export default function NextPostPage() {
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [recommendation, setRecommendation] = useState<Recommendation | null>(null);
   const [chosenPhoto, setChosenPhoto] = useState<CandidatePhoto | null>(null);
+  const captionRef = useRef<HTMLDivElement>(null);
 
-  async function handleGenerate() {
-    setLoading(true);
-    setError("");
-    setRecommendation(null);
-    setChosenPhoto(null);
+  useEffect(() => {
+    let cancelled = false;
 
-    const result = await fetchNextPostRecommendation();
+    async function load() {
+      setLoading(true);
+      setError("");
 
-    if (!result.ok) {
-      setError(result.error);
-    } else {
-      setRecommendation(result.recommendation);
-      setChosenPhoto(result.chosenPhoto);
+      const result = await fetchNextPostRecommendation();
+      if (cancelled) return;
+
+      if (!result.ok) {
+        setError(result.error);
+      } else {
+        setRecommendation(result.recommendation);
+        setChosenPhoto(result.chosenPhoto);
+      }
+
+      setLoading(false);
     }
+    load();
 
-    setLoading(false);
-  }
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (chosenPhoto) {
+      captionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }, [chosenPhoto]);
 
   return (
-    <div>
-      <h1>Next Post</h1>
-      <button onClick={handleGenerate} disabled={loading}>
-        {loading ? "Thinking..." : "Get Next Post Recommendation"}
-      </button>
-      {error && <p>Error: {error}</p>}
+    <div className="page">
+      {loading && (
+        <p className="text-secondary content-block">Finding today&apos;s recommendation…</p>
+      )}
+      {error && <p className="text-secondary content-block">{error}</p>}
 
       {recommendation && recommendation.recommend && chosenPhoto && (
         <div>
           <img
             src={chosenPhoto.public_url}
             alt={`Photo ${chosenPhoto.id}`}
-            style={{ maxWidth: "500px", width: "100%" }}
+            className="fade-in"
+            style={{ width: "100%", display: "block", background: "var(--surface)" }}
           />
-          <p>{recommendation.why}</p>
-          <CaptionWriter analysis={chosenPhoto.analysis} />
-          <SuggestEdits
-            photoId={chosenPhoto.id}
-            publicUrl={chosenPhoto.public_url}
-            analysis={chosenPhoto.analysis}
-          />
+
+          <div className="content-block">
+            <p className="label fade-in">Why</p>
+            <p className="headline prose fade-in label-block">{recommendation.why}</p>
+          </div>
+
+          <div ref={captionRef} className="content-block">
+            <CaptionWriter analysis={chosenPhoto.analysis} primary autoGenerate />
+          </div>
+
+          <div className="content-block">
+            <SuggestEdits
+              photoId={chosenPhoto.id}
+              publicUrl={chosenPhoto.public_url}
+              analysis={chosenPhoto.analysis}
+            />
+          </div>
         </div>
       )}
 
       {recommendation && !recommendation.recommend && (
-        <p>{recommendation.reason}</p>
+        <div>
+          <p className="label">Why</p>
+          <p className="headline prose label-block">{recommendation.reason}</p>
+        </div>
       )}
     </div>
   );
