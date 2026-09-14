@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
-import CaptionWriter from "@/components/CaptionWriter";
+import CandidateEditFrame from "@/components/CandidateEditFrame";
 
 type Photo = {
   id: number;
@@ -177,10 +177,6 @@ export default function GridPage() {
     );
   }
 
-  function reasonById(id: string): string | undefined {
-    return result?.suggested_order.find((item) => item.photo_id === id)?.reason;
-  }
-
   function handleDragStart(id: string) {
     setDraggedId(id);
   }
@@ -309,7 +305,6 @@ export default function GridPage() {
               const photo = previewPhotoById(id);
               if (!photo) return null;
               const isCandidate = candidatePhotos.some((p) => String(p.id) === id);
-              const reason = isCandidate ? reasonById(id) : undefined;
 
               return (
                 <div
@@ -324,17 +319,27 @@ export default function GridPage() {
                     opacity: draggedId === id ? 0.4 : 1,
                   }}
                 >
-                  <img
-                    src={photo.public_url}
-                    alt={`Preview position ${i + 1}`}
-                    style={{
-                      width: "100%",
-                      aspectRatio: "1 / 1",
-                      objectFit: "cover",
-                      display: "block",
-                      background: "var(--surface)",
-                    }}
-                  />
+                  {isCandidate ? (
+                    <div style={{ position: "relative", width: "100%", aspectRatio: "1 / 1" }}>
+                      <CandidateEditFrame
+                        photoId={photo.id}
+                        publicUrl={photo.public_url}
+                        analysis={photo.analysis as Record<string, unknown>}
+                      />
+                    </div>
+                  ) : (
+                    <img
+                      src={photo.public_url}
+                      alt={`Preview position ${i + 1}`}
+                      style={{
+                        width: "100%",
+                        aspectRatio: "1 / 1",
+                        objectFit: "cover",
+                        display: "block",
+                        background: "var(--surface)",
+                      }}
+                    />
+                  )}
                   {isCandidate && (
                     <span
                       style={{
@@ -354,16 +359,6 @@ export default function GridPage() {
                     >
                       {i + 1}
                     </span>
-                  )}
-                  {reason && (
-                    <p className="quote label-block" style={{ fontSize: "14px", padding: "0 4px" }}>
-                      {reason}
-                    </p>
-                  )}
-                  {isCandidate && (
-                    <div className="label-block" style={{ padding: "0 4px" }}>
-                      <CaptionWriter analysis={photo.analysis as Record<string, unknown>} />
-                    </div>
                   )}
                 </div>
               );
