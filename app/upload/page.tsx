@@ -15,9 +15,7 @@ type Photo = {
 
 export default function UploadPage() {
   const [file, setFile] = useState<File | null>(null);
-  const [source, setSource] = useState<
-    "existing_feed" | "new_candidate" | "carousel_candidate" | "inspo"
-  >("existing_feed");
+  const [source, setSource] = useState<"existing_feed" | "new_candidate" | "inspo">("existing_feed");
   const [existingCaption, setExistingCaption] = useState("");
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
@@ -156,7 +154,6 @@ export default function UploadPage() {
   const sourceOptions: { value: typeof source; label: string }[] = [
     { value: "existing_feed", label: "Existing feed photo" },
     { value: "new_candidate", label: "New candidate photo" },
-    { value: "carousel_candidate", label: "Carousel candidate" },
     { value: "inspo", label: "Inspo (target aesthetic)" },
   ];
 
