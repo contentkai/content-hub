@@ -43,33 +43,53 @@ export async function POST(req: NextRequest) {
     }
 
     // exposure/contrast via linear(a, b): output = input * a + b
-    const contrastSlope = 1 + contrastVal * 0.05; // 0.5 .. 1.5
-    const exposureIntercept = exposureVal * 5; // -50 .. 50
+    // "a" (slope) stays close to 1.0 so contrast shifts stay subtle at the edges of the
+    // -10..10 range; "b" (offset) is a small shift in the 0-255 pixel range, not the raw value.
+    const contrastSlope = 1 + contrastVal / 20; // 0.5 .. 1.5
+    const exposureIntercept = exposureVal * 3; // -30 .. 30
 
-    // saturation via modulate: 1 = unchanged
-    const saturationMultiplier = 1 + saturationVal * 0.06; // 0.4 .. 1.6
+    // saturation via modulate: 1 = unchanged, mapped the same way as contrast's slope
+    const saturationMultiplier = 1 + saturationVal / 20; // 0.5 .. 1.5
 
     const baseBuffer = await sharp(inputBuffer)
       .linear(contrastSlope, exposureIntercept)
       .modulate({ saturation: saturationMultiplier })
       .toBuffer();
 
-    // sharp's tint() replaces the image's chroma entirely (preserving only luminance),
-    // so applying it directly would turn the photo into a full duotone. Instead, generate
-    // a fully-tinted version and composite it back over the base image at an opacity
-    // proportional to the warmth magnitude, so it reads as a color cast, not a wash.
     let outputBuffer: Buffer;
     if (warmthVal !== 0) {
       const target = warmthVal > 0 ? { r: 255, g: 180, b: 120 } : { r: 120, g: 180, b: 255 };
       const opacity = (Math.abs(warmthVal) / 10) * 0.5; // up to 50% at |warmth| = 10
 
+      // sharp's tint() replaces the image's chroma entirely (preserving only luminance),
+      // so applying it directly would turn the photo into a full duotone. To get a subtle
+      // color cast instead, blend the tinted version back over the base manually via raw
+      // pixel math — sharp's composite() with a low-alpha PNG overlay was tried first, but
+      // it silently drops the base layer's contribution (a premultiplied-alpha mismatch:
+      // the composited result matched the overlay's premultiplied color almost exactly,
+      // meaning the "* (1 - alpha)" base term was never actually applied), producing a
+      // near-black image even at modest opacity. Manual linear interpolation on raw pixels
+      // sidesteps that entirely and is trivial to verify correct.
       const tintedBuffer = await sharp(baseBuffer).tint(target).toBuffer();
-      // removeAlpha first: ensureAlpha only applies its value to a *newly created*
-      // channel, so any existing (opaque) alpha from the source format must be stripped.
-      const overlayBuffer = await sharp(tintedBuffer).removeAlpha().ensureAlpha(opacity).toBuffer();
 
-      outputBuffer = await sharp(baseBuffer)
-        .composite([{ input: overlayBuffer, blend: "over" }])
+      const { data: baseRaw, info } = await sharp(baseBuffer)
+        .removeAlpha()
+        .raw()
+        .toBuffer({ resolveWithObject: true });
+      const { data: tintedRaw } = await sharp(tintedBuffer)
+        .removeAlpha()
+        .resize(info.width, info.height)
+        .raw()
+        .toBuffer({ resolveWithObject: true });
+
+      const blended = Buffer.alloc(baseRaw.length);
+      for (let i = 0; i < baseRaw.length; i++) {
+        blended[i] = Math.round(baseRaw[i] * (1 - opacity) + tintedRaw[i] * opacity);
+      }
+
+      outputBuffer = await sharp(blended, {
+        raw: { width: info.width, height: info.height, channels: info.channels },
+      })
         .jpeg({ quality: 90 })
         .toBuffer();
     } else {
