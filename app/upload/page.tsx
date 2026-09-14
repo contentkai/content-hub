@@ -60,51 +60,42 @@ export default function UploadPage() {
       .from("photos")
       .getPublicUrl(storagePath);
 
+    // The shift-existing-rows-up + insert-at-position-1 sequence has to happen atomically —
+    // doing it as separate client-side reads/updates (the old approach) races against any
+    // other upload happening around the same time, since each call reads a snapshot of
+    // grid_position before the other's shift has committed. insert_existing_feed_photo runs
+    // both steps inside a single Postgres transaction instead.
+    let insertData: { id: number };
     if (source === "existing_feed") {
-      const { data: existingRows, error: shiftFetchError } = await supabase
+      const { data, error: insertError } = await supabase.rpc("insert_existing_feed_photo", {
+        p_storage_path: storagePath,
+        p_public_url: publicUrlData.publicUrl,
+        p_existing_caption: existingCaption.trim() !== "" ? existingCaption.trim() : null,
+      });
+      if (insertError) {
+        setError(insertError.message);
+        setUploading(false);
+        return;
+      }
+      insertData = data;
+    } else {
+      const { data, error: insertError } = await supabase
         .from("photos")
-        .select("id, grid_position")
-        .eq("source", "existing_feed");
-
-      if (shiftFetchError) {
-        setError(shiftFetchError.message);
+        .insert({
+          storage_path: storagePath,
+          public_url: publicUrlData.publicUrl,
+          source,
+          grid_position: null,
+          existing_caption: null,
+        })
+        .select()
+        .single();
+      if (insertError) {
+        setError(insertError.message);
         setUploading(false);
         return;
       }
-
-      const shiftErrors = await Promise.all(
-        (existingRows ?? []).map(({ id, grid_position }) =>
-          supabase
-            .from("photos")
-            .update({ grid_position: grid_position == null ? null : grid_position + 1 })
-            .eq("id", id)
-        )
-      );
-      const shiftError = shiftErrors.find((r) => r.error)?.error;
-      if (shiftError) {
-        setError(shiftError.message);
-        setUploading(false);
-        return;
-      }
-    }
-
-    const { data: insertData, error: insertError } = await supabase
-      .from("photos")
-      .insert({
-        storage_path: storagePath,
-        public_url: publicUrlData.publicUrl,
-        source,
-        grid_position: source === "existing_feed" ? 1 : null,
-        existing_caption:
-          source === "existing_feed" && existingCaption.trim() !== "" ? existingCaption.trim() : null,
-      })
-      .select()
-      .single();
-
-    if (insertError) {
-      setError(insertError.message);
-      setUploading(false);
-      return;
+      insertData = data;
     }
 
     await loadPhotos();
@@ -148,47 +139,15 @@ export default function UploadPage() {
       return;
     }
 
-    const { data: deletedRows, error: deleteError } = await supabase
-      .from("photos")
-      .delete()
-      .eq("id", photo.id)
-      .select();
+    // delete_photo removes the row and (if it was an existing_feed photo) closes the gap in
+    // grid_position atomically in one transaction — see insert_existing_feed_photo above for
+    // why this can't safely be done as separate client-side reads/updates. It also runs as
+    // security definer, so it isn't subject to the RLS-silent-failure gotcha the old delete
+    // path had to specifically check for; it raises an error if the row doesn't exist instead.
+    const { error: deleteError } = await supabase.rpc("delete_photo", { p_photo_id: photo.id });
     if (deleteError) {
       setError(deleteError.message);
       return;
-    }
-    if (!deletedRows || deletedRows.length === 0) {
-      setError(
-        "Delete didn't affect any rows — likely a missing RLS DELETE policy on the photos table."
-      );
-      return;
-    }
-
-    if (photo.source === "existing_feed" && photo.grid_position != null) {
-      const { data: laterRows, error: laterError } = await supabase
-        .from("photos")
-        .select("id, grid_position")
-        .eq("source", "existing_feed")
-        .gt("grid_position", photo.grid_position);
-
-      if (laterError) {
-        setError(laterError.message);
-        return;
-      }
-
-      const shiftErrors = await Promise.all(
-        (laterRows ?? []).map(({ id, grid_position }) =>
-          supabase
-            .from("photos")
-            .update({ grid_position: (grid_position as number) - 1 })
-            .eq("id", id)
-        )
-      );
-      const shiftError = shiftErrors.find((r) => r.error)?.error;
-      if (shiftError) {
-        setError(shiftError.message);
-        return;
-      }
     }
 
     await loadPhotos();
@@ -279,11 +238,27 @@ export default function UploadPage() {
                   width: "26px",
                   height: "26px",
                   cursor: "pointer",
-                  fontSize: "13px",
-                  lineHeight: 1,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
                 }}
               >
-                🗑
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <polyline points="3 6 5 6 21 6" />
+                  <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+                  <path d="M10 11v6" />
+                  <path d="M14 11v6" />
+                  <path d="M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2" />
+                </svg>
               </button>
               <img
                 src={photo.public_url}
