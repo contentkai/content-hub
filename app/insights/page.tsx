@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 
 type AestheticProfile = {
@@ -9,16 +8,14 @@ type AestheticProfile = {
   description: string;
 };
 
+type TargetProfile = {
+  summary: string;
+};
+
 type Photo = {
   id: number;
   public_url: string;
   analysis: Record<string, unknown>;
-};
-
-type PreferenceAnswer = {
-  axis: string;
-  question: string;
-  chosen_photo_id: number;
 };
 
 type QuizQuestion = {
@@ -39,12 +36,14 @@ type QuizState =
 
 export default function InsightsPage() {
   const [currentProfile, setCurrentProfile] = useState<AestheticProfile | null>(null);
-  const [currentLoading, setCurrentLoading] = useState(false);
-  const [currentError, setCurrentError] = useState("");
 
-  const [targetProfile, setTargetProfile] = useState<AestheticProfile | null>(null);
+  const [targetProfile, setTargetProfile] = useState<TargetProfile | null>(null);
   const [targetLoading, setTargetLoading] = useState(false);
   const [targetError, setTargetError] = useState("");
+
+  const [inspoFile, setInspoFile] = useState<File | null>(null);
+  const [inspoUploading, setInspoUploading] = useState(false);
+  const [inspoError, setInspoError] = useState("");
 
   const [quiz, setQuiz] = useState<QuizState>({ status: "idle" });
 
@@ -65,91 +64,86 @@ export default function InsightsPage() {
         .order("id", { ascending: false })
         .limit(1);
       if (targetRows && targetRows.length > 0) {
-        setTargetProfile(targetRows[0].summary as AestheticProfile);
+        setTargetProfile(targetRows[0].summary as TargetProfile);
       }
     }
     load();
   }, []);
 
-  async function handleGenerateCurrent() {
-    setCurrentLoading(true);
-    setCurrentError("");
+  async function handleUploadInspo() {
+    if (!inspoFile) return;
+    setInspoUploading(true);
+    setInspoError("");
 
-    const { data: photos, error: photosError } = await supabase
+    const storagePath = `${Date.now()}-${inspoFile.name}`;
+
+    const { error: uploadErr } = await supabase.storage.from("photos").upload(storagePath, inspoFile);
+    if (uploadErr) {
+      setInspoError(uploadErr.message);
+      setInspoUploading(false);
+      return;
+    }
+
+    const { data: publicUrlData } = supabase.storage.from("photos").getPublicUrl(storagePath);
+
+    const { data: insertData, error: insertError } = await supabase
       .from("photos")
-      .select("analysis")
-      .eq("source", "existing_feed")
-      .not("analysis", "is", null);
-
-    if (photosError) {
-      setCurrentError(photosError.message);
-      setCurrentLoading(false);
+      .insert({
+        storage_path: storagePath,
+        public_url: publicUrlData.publicUrl,
+        source: "inspo",
+        grid_position: null,
+        existing_caption: null,
+      })
+      .select()
+      .single();
+    if (insertError) {
+      setInspoError(insertError.message);
+      setInspoUploading(false);
       return;
     }
 
-    if (!photos || photos.length === 0) {
-      setCurrentError("No existing_feed photos with analysis found");
-      setCurrentLoading(false);
-      return;
-    }
+    const uploadedFile = inspoFile;
+    setInspoFile(null);
+    setInspoUploading(false);
 
-    const { data: preferenceAnswers } = await supabase
-      .from("preference_answers")
-      .select("axis, question, chosen_photo_id");
+    const formData = new FormData();
+    formData.append("image", uploadedFile);
 
-    const res = await fetch("/api/aesthetic-summary", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        analyses: photos.map((p) => p.analysis),
-        preferenceAnswers: preferenceAnswers ?? [],
-      }),
-    });
-    const data = await res.json();
-
-    if (!res.ok) {
-      setCurrentError(data.error ?? "Request failed");
-      setCurrentLoading(false);
-      return;
-    }
-
-    let newSummary: AestheticProfile;
     try {
-      newSummary = JSON.parse(data.result);
-    } catch {
-      setCurrentError("Model did not return valid JSON: " + data.result);
-      setCurrentLoading(false);
-      return;
+      const res = await fetch("/api/analyze-image", {
+        method: "POST",
+        body: formData,
+      });
+      const data = await res.json();
+      if (res.ok) {
+        let analysis: Record<string, unknown>;
+        try {
+          analysis = JSON.parse(data.result);
+        } catch {
+          analysis = { error: "invalid JSON from model", raw: data.result };
+        }
+        await supabase.from("photos").update({ analysis }).eq("id", insertData.id);
+      } else {
+        setInspoError(data.error ?? "Vision analysis failed");
+      }
+    } catch (err) {
+      setInspoError(String(err));
     }
-
-    const { data: existing } = await supabase
-      .from("aesthetic_profile")
-      .select("id")
-      .order("id", { ascending: false })
-      .limit(1);
-
-    if (existing && existing.length > 0) {
-      await supabase.from("aesthetic_profile").update({ summary: newSummary }).eq("id", existing[0].id);
-    } else {
-      await supabase.from("aesthetic_profile").insert({ summary: newSummary });
-    }
-
-    setCurrentProfile(newSummary);
-    setCurrentLoading(false);
   }
 
   async function handleGenerateTarget() {
     setTargetLoading(true);
     setTargetError("");
 
-    const { data: inspoPhotos, error: inspoError } = await supabase
+    const { data: inspoPhotos, error: inspoErr } = await supabase
       .from("photos")
       .select("analysis")
       .eq("source", "inspo")
       .not("analysis", "is", null);
 
-    if (inspoError) {
-      setTargetError(inspoError.message);
+    if (inspoErr) {
+      setTargetError(inspoErr.message);
       setTargetLoading(false);
       return;
     }
@@ -160,7 +154,7 @@ export default function InsightsPage() {
       return;
     }
 
-    const res = await fetch("/api/aesthetic-summary", {
+    const res = await fetch("/api/target-aesthetic-summary", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ analyses: inspoPhotos.map((p) => p.analysis) }),
@@ -173,7 +167,7 @@ export default function InsightsPage() {
       return;
     }
 
-    let newTarget: AestheticProfile;
+    let newTarget: TargetProfile;
     try {
       newTarget = JSON.parse(data.result);
     } catch {
@@ -277,42 +271,30 @@ export default function InsightsPage() {
       <h1>My Insights</h1>
 
       <div className="section-block">
-        <h2>Your current aesthetic</h2>
-        <div className="content-block">
-          <button onClick={handleGenerateCurrent} disabled={currentLoading} className="btn-primary">
-            {currentLoading ? "Generating…" : "Generate aesthetic profile"}
-          </button>
-          {currentError && <p className="text-secondary label-block">{currentError}</p>}
-        </div>
-        {currentProfile && (
-          <>
-            <p className="text-secondary content-block" style={{ fontSize: "13px" }}>
-              {currentProfile.tags.join(" · ")}
-            </p>
-            <p className="quote prose label-block">{currentProfile.description}</p>
-          </>
-        )}
-      </div>
+        <h2>Target aesthetic</h2>
 
-      <div className="section-block">
-        <h2>Your target aesthetic</h2>
-        <div className="content-block" style={{ display: "flex", gap: "24px", alignItems: "center" }}>
+        {targetProfile && (
+          <p className="quote prose content-block">Target aesthetic: {targetProfile.summary}</p>
+        )}
+
+        <div className="content-block" style={{ display: "flex", flexDirection: "column", gap: "8px", alignItems: "flex-start" }}>
+          <input
+            type="file"
+            accept="image/*"
+            onChange={(e) => setInspoFile(e.target.files?.[0] ?? null)}
+          />
+          <button onClick={handleUploadInspo} disabled={!inspoFile || inspoUploading} className="link">
+            {inspoUploading ? "Uploading…" : "Upload inspo photo"}
+          </button>
+          {inspoError && <p className="text-secondary" style={{ fontSize: "13px" }}>{inspoError}</p>}
+        </div>
+
+        <div className="content-block">
           <button onClick={handleGenerateTarget} disabled={targetLoading} className="link">
             {targetLoading ? "Generating…" : "Generate target aesthetic"}
           </button>
-          <Link href="/upload" className="link">
-            Add inspo photos
-          </Link>
+          {targetError && <p className="text-secondary label-block">{targetError}</p>}
         </div>
-        {targetError && <p className="text-secondary label-block">{targetError}</p>}
-        {targetProfile && (
-          <>
-            <p className="text-secondary content-block" style={{ fontSize: "13px" }}>
-              {targetProfile.tags.join(" · ")}
-            </p>
-            <p className="quote prose label-block">{targetProfile.description}</p>
-          </>
-        )}
       </div>
 
       <div className="section-block">

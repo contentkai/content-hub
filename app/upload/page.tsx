@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import { regenerateAestheticProfile } from "@/lib/regenerateAestheticProfile";
 
 type Photo = {
   id: number;
@@ -15,7 +16,7 @@ type Photo = {
 
 export default function UploadPage() {
   const [file, setFile] = useState<File | null>(null);
-  const [source, setSource] = useState<"existing_feed" | "new_candidate" | "inspo">("existing_feed");
+  const [source, setSource] = useState<"existing_feed" | "new_candidate">("existing_feed");
   const [existingCaption, setExistingCaption] = useState("");
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
@@ -120,6 +121,9 @@ export default function UploadPage() {
         }
         await supabase.from("photos").update({ analysis }).eq("id", insertData.id);
         await loadPhotos();
+        if (source === "existing_feed") {
+          await regenerateAestheticProfile();
+        }
       } else {
         setError(data.error ?? "Vision analysis failed");
       }
@@ -154,7 +158,6 @@ export default function UploadPage() {
   const sourceOptions: { value: typeof source; label: string }[] = [
     { value: "existing_feed", label: "Existing feed photo" },
     { value: "new_candidate", label: "New candidate photo" },
-    { value: "inspo", label: "Inspo (target aesthetic)" },
   ];
 
   return (
