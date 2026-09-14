@@ -22,18 +22,22 @@ type EditValues = {
 type Variation = EditValues & {
   previewDataUrl?: string;
   previewError?: string;
-  used?: boolean;
 };
 
 export default function SuggestEdits({ photoId, publicUrl, analysis, primary }: Props) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [variations, setVariations] = useState<Variation[] | null>(null);
+  const [appliedIndex, setAppliedIndex] = useState<number | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
 
   async function handleSuggestEdits() {
     setLoading(true);
     setError("");
     setVariations(null);
+    setAppliedIndex(null);
+    setSaved(false);
 
     const { data: profileRows } = await supabase
       .from("aesthetic_profile")
@@ -96,9 +100,24 @@ export default function SuggestEdits({ photoId, publicUrl, analysis, primary }: 
     setLoading(false);
   }
 
-  async function handleUseThisVersion(index: number) {
-    const variation = variations?.[index];
+  function handleApply(index: number) {
+    if (saved) return;
+    setAppliedIndex(index);
+    setError("");
+  }
+
+  function handleRevert() {
+    setAppliedIndex(null);
+    setError("");
+  }
+
+  async function handleSave() {
+    if (appliedIndex === null) return;
+    const variation = variations?.[appliedIndex];
     if (!variation?.previewDataUrl) return;
+
+    setSaving(true);
+    setError("");
 
     const base64 = variation.previewDataUrl.split(",")[1];
     const bytes = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
@@ -110,6 +129,7 @@ export default function SuggestEdits({ photoId, publicUrl, analysis, primary }: 
 
     if (uploadError) {
       setError(uploadError.message);
+      setSaving(false);
       return;
     }
 
@@ -124,13 +144,16 @@ export default function SuggestEdits({ photoId, publicUrl, analysis, primary }: 
 
     if (insertError) {
       setError(insertError.message);
+      setSaving(false);
       return;
     }
 
-    setVariations((prev) =>
-      prev ? prev.map((v, i) => (i === index ? { ...v, used: true } : v)) : prev
-    );
+    setSaving(false);
+    setSaved(true);
   }
+
+  const applied = appliedIndex !== null ? variations?.[appliedIndex] : undefined;
+  const frameSrc = applied?.previewDataUrl ?? publicUrl;
 
   return (
     <div>
@@ -144,43 +167,96 @@ export default function SuggestEdits({ photoId, publicUrl, analysis, primary }: 
       {error && <p className="text-secondary label-block">{error}</p>}
 
       {variations && (
-        <div className="content-block" style={{ display: "flex", gap: "24px", overflowX: "auto" }}>
-          <div style={{ flex: "0 0 auto", width: "200px" }}>
-            <p className="label">Original</p>
+        <div className="content-block" style={{ width: "240px" }}>
+          <p className="label">{saved ? "Saved edit" : applied ? applied.label : "Original"}</p>
+
+          <div className="label-block" style={{ position: "relative" }}>
             <img
-              src={publicUrl}
-              alt="Original"
-              className="label-block"
-              style={{ width: "100%", aspectRatio: "1 / 1", objectFit: "cover", background: "var(--surface)" }}
+              src={frameSrc}
+              alt={applied ? applied.label : "Original"}
+              style={{ width: "100%", aspectRatio: "1 / 1", objectFit: "cover", display: "block", background: "var(--surface)" }}
             />
-          </div>
-          {variations.map((v, i) => (
-            <div key={i} style={{ flex: "0 0 auto", width: "200px" }}>
-              <p className="label">{v.label}</p>
-              {v.previewDataUrl ? (
-                <img
-                  src={v.previewDataUrl}
-                  alt={v.label}
-                  className="label-block"
-                  style={{ width: "100%", aspectRatio: "1 / 1", objectFit: "cover", background: "var(--surface)" }}
-                />
-              ) : (
-                <p className="text-secondary label-block">
-                  Preview failed: {v.previewError ?? "unknown error"}
-                </p>
-              )}
-              <p className="quote content-block">{v.reason}</p>
-              <div className="label-block">
-                <button
-                  onClick={() => handleUseThisVersion(i)}
-                  disabled={!v.previewDataUrl || v.used}
-                  className="link"
-                >
-                  {v.used ? "Saved" : "Use this version"}
-                </button>
+
+            {applied && (
+              <div style={{ position: "absolute", bottom: "6px", right: "6px", display: "flex", gap: "6px" }}>
+                {saved ? (
+                  <span
+                    title="Saved"
+                    style={{
+                      background: "var(--accent)",
+                      color: "var(--paper)",
+                      width: "26px",
+                      height: "26px",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="20 6 9 17 4 12" />
+                    </svg>
+                  </span>
+                ) : (
+                  <>
+                    <button
+                      onClick={handleRevert}
+                      disabled={saving}
+                      style={{
+                        background: "var(--surface)",
+                        color: "var(--paper)",
+                        border: "1px solid var(--hairline)",
+                        borderRadius: "0",
+                        padding: "4px 10px",
+                        fontSize: "13px",
+                        cursor: "pointer",
+                      }}
+                    >
+                      Revert
+                    </button>
+                    <button
+                      onClick={handleSave}
+                      disabled={saving || !applied.previewDataUrl}
+                      style={{
+                        background: "var(--paper)",
+                        color: "var(--bg)",
+                        border: "none",
+                        borderRadius: "0",
+                        padding: "4px 10px",
+                        fontSize: "13px",
+                        fontWeight: 600,
+                        cursor: "pointer",
+                      }}
+                    >
+                      {saving ? "Saving…" : "Save"}
+                    </button>
+                  </>
+                )}
               </div>
+            )}
+          </div>
+
+          {applied && <p className="quote content-block">{applied.reason}</p>}
+
+          {!saved && (
+            <div className="label-block" style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+              {variations.map((v, i) =>
+                v.previewDataUrl ? (
+                  <button
+                    key={i}
+                    onClick={() => handleApply(i)}
+                    className="link"
+                    style={{ opacity: appliedIndex === i ? 1 : 0.6 }}
+                  >
+                    {v.label}
+                  </button>
+                ) : (
+                  <span key={i} className="text-secondary" style={{ fontSize: "13px" }} title={v.previewError ?? "Preview failed"}>
+                    {v.label} (failed)
+                  </span>
+                )
+              )}
             </div>
-          ))}
+          )}
         </div>
       )}
     </div>
