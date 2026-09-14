@@ -33,6 +33,8 @@ export default function GridPage() {
   const [error, setError] = useState("");
   const [result, setResult] = useState<FixFeedResult | null>(null);
   const [candidatePhotos, setCandidatePhotos] = useState<Photo[]>([]);
+  const [previewOrder, setPreviewOrder] = useState<string[] | null>(null);
+  const [draggedId, setDraggedId] = useState<string | null>(null);
 
   async function loadCandidates() {
     const { data, error: candidatesError } = await supabase
@@ -86,10 +88,17 @@ export default function GridPage() {
     load();
   }, []);
 
+  function computeInitialPreviewOrder(fixFeedResult: FixFeedResult, existingFeedPhotos: Photo[]) {
+    const chosenIds = fixFeedResult.suggested_order.map((item) => item.photo_id);
+    const existingIds = existingFeedPhotos.map((p) => String(p.id));
+    return [...chosenIds, ...existingIds];
+  }
+
   async function handleFixMyFeed() {
     setLoading(true);
     setError("");
     setResult(null);
+    setPreviewOrder(null);
 
     const { data: recentPosts, error: recentError } = await supabase
       .from("photos")
@@ -138,7 +147,9 @@ export default function GridPage() {
     }
 
     try {
-      setResult(JSON.parse(data.result));
+      const parsed: FixFeedResult = JSON.parse(data.result);
+      setResult(parsed);
+      setPreviewOrder(computeInitialPreviewOrder(parsed, photos));
     } catch {
       const preview = String(data.result ?? "").slice(0, 300);
       setError(
@@ -151,139 +162,256 @@ export default function GridPage() {
     setLoading(false);
   }
 
+  function handleResetPreview() {
+    if (!result) return;
+    setPreviewOrder(computeInitialPreviewOrder(result, photos));
+  }
+
   function candidateById(id: string) {
     return candidatePhotos.find((p) => String(p.id) === id);
   }
 
-  type CandidateSlot = { photo: Photo; badge?: number; reason?: string; deprioritized: boolean };
+  function previewPhotoById(id: string): Photo | undefined {
+    return (
+      candidatePhotos.find((p) => String(p.id) === id) ?? photos.find((p) => String(p.id) === id)
+    );
+  }
 
-  function getOrderedCandidates(): CandidateSlot[] {
-    if (!result) {
-      return candidatePhotos.map((photo) => ({ photo, deprioritized: false }));
+  function reasonById(id: string): string | undefined {
+    return result?.suggested_order.find((item) => item.photo_id === id)?.reason;
+  }
+
+  function handleDragStart(id: string) {
+    setDraggedId(id);
+  }
+
+  function handleDragOver(e: React.DragEvent) {
+    e.preventDefault();
+  }
+
+  function handleDrop(targetId: string) {
+    if (!previewOrder || !draggedId || draggedId === targetId) {
+      setDraggedId(null);
+      return;
     }
+    const fromIndex = previewOrder.indexOf(draggedId);
+    const toIndex = previewOrder.indexOf(targetId);
+    if (fromIndex === -1 || toIndex === -1) {
+      setDraggedId(null);
+      return;
+    }
+    const newOrder = [...previewOrder];
+    newOrder.splice(fromIndex, 1);
+    newOrder.splice(toIndex, 0, draggedId);
+    setPreviewOrder(newOrder);
+    setDraggedId(null);
+  }
 
-    const top3 = result.suggested_order.slice(0, 3);
-    const restSuggested = result.suggested_order.slice(3);
+  type DeprioritizedSlot = { photo: Photo; reason: string };
 
-    const topSlots: CandidateSlot[] = top3.flatMap((item, i) => {
+  function getLeftOutSlots(): DeprioritizedSlot[] {
+    if (!result) return [];
+    return result.left_out.flatMap((item) => {
       const photo = candidateById(item.photo_id);
-      return photo ? [{ photo, badge: i + 1, reason: item.reason, deprioritized: false }] : [];
+      return photo ? [{ photo, reason: item.reason }] : [];
     });
-
-    const deprioritizedSlots: CandidateSlot[] = [...restSuggested, ...result.left_out].flatMap((item) => {
-      const photo = candidateById(item.photo_id);
-      return photo ? [{ photo, reason: item.reason, deprioritized: true }] : [];
-    });
-
-    const mentionedIds = new Set([
-      ...result.suggested_order.map((i) => i.photo_id),
-      ...result.left_out.map((i) => i.photo_id),
-    ]);
-    const unmentionedSlots: CandidateSlot[] = candidatePhotos
-      .filter((p) => !mentionedIds.has(String(p.id)))
-      .map((photo) => ({ photo, deprioritized: false }));
-
-    return [...topSlots, ...deprioritizedSlots, ...unmentionedSlots];
   }
 
   return (
     <div className="page">
       <h1>Grid</h1>
 
-      <div className="section-block">
-        <h2>Candidates</h2>
-        <div
-          className="content-block"
-          style={{
-            border: "1px dashed var(--hairline)",
-            padding: "8px",
-          }}
-        >
+      {!result && (
+        <>
+          <div className="section-block">
+            <h2>Candidates</h2>
+            <div
+              className="content-block"
+              style={{
+                border: "1px dashed var(--hairline)",
+                padding: "8px",
+              }}
+            >
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(3, 1fr)",
+                  gap: "2px",
+                }}
+              >
+                {candidatePhotos.map((photo) => (
+                  <img
+                    key={photo.id}
+                    src={photo.public_url}
+                    alt={`Candidate ${photo.id}`}
+                    style={{
+                      width: "100%",
+                      aspectRatio: "1 / 1",
+                      objectFit: "cover",
+                      display: "block",
+                      background: "var(--surface)",
+                    }}
+                  />
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="section-block">
+            <h2>Your grid</h2>
+            <div
+              className="content-block"
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(3, 1fr)",
+                gap: "2px",
+              }}
+            >
+              {photos.map((photo) => (
+                <img
+                  key={photo.id}
+                  src={photo.public_url}
+                  alt={`Grid position ${photo.grid_position}`}
+                  style={{
+                    width: "100%",
+                    aspectRatio: "1 / 1",
+                    objectFit: "cover",
+                    background: "var(--surface)",
+                  }}
+                />
+              ))}
+            </div>
+          </div>
+        </>
+      )}
+
+      {result && previewOrder && (
+        <div className="section-block">
+          <div style={{ display: "flex", alignItems: "baseline", gap: "16px" }}>
+            <h2>Preview</h2>
+            <button onClick={handleResetPreview} className="link">
+              Reset preview
+            </button>
+          </div>
+          <p className="text-secondary label-block" style={{ fontSize: "13px" }}>
+            Drag any photo to try a different order — this is just a preview, nothing is saved.
+          </p>
+
           <div
+            className="content-block"
             style={{
               display: "grid",
               gridTemplateColumns: "repeat(3, 1fr)",
               gap: "2px",
             }}
           >
-            {getOrderedCandidates().map((slot) => (
-              <div
-                key={slot.photo.id}
-                style={{ position: "relative", opacity: slot.deprioritized ? 0.45 : 1 }}
-                title={slot.deprioritized ? slot.reason : undefined}
-              >
-                <img
-                  src={slot.photo.public_url}
-                  alt={`Candidate ${slot.photo.id}`}
-                  style={{
-                    width: "100%",
-                    aspectRatio: "1 / 1",
-                    objectFit: "cover",
-                    display: "block",
-                    background: "var(--surface)",
-                  }}
-                />
-                {slot.badge && (
-                  <span
-                    style={{
-                      position: "absolute",
-                      top: "4px",
-                      left: "4px",
-                      background: "var(--accent)",
-                      color: "var(--paper)",
-                      borderRadius: "50%",
-                      width: "20px",
-                      height: "20px",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      fontSize: "12px",
-                    }}
-                  >
-                    {slot.badge}
-                  </span>
-                )}
-                {slot.reason && !slot.deprioritized && (
-                  <p className="quote label-block" style={{ fontSize: "14px", padding: "0 4px" }}>
-                    {slot.reason}
-                  </p>
-                )}
-                {slot.badge && (
-                  <div className="label-block" style={{ padding: "0 4px" }}>
-                    <CaptionWriter analysis={slot.photo.analysis as Record<string, unknown>} />
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
+            {previewOrder.map((id, i) => {
+              const photo = previewPhotoById(id);
+              if (!photo) return null;
+              const isCandidate = candidatePhotos.some((p) => String(p.id) === id);
+              const reason = isCandidate ? reasonById(id) : undefined;
 
-      <div className="section-block">
-        <h2>Your grid</h2>
-        <div
-          className="content-block"
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(3, 1fr)",
-            gap: "2px",
-          }}
-        >
-          {photos.map((photo) => (
-            <img
-              key={photo.id}
-              src={photo.public_url}
-              alt={`Grid position ${photo.grid_position}`}
-              style={{
-                width: "100%",
-                aspectRatio: "1 / 1",
-                objectFit: "cover",
-                background: "var(--surface)",
-              }}
-            />
-          ))}
+              return (
+                <div
+                  key={id}
+                  draggable
+                  onDragStart={() => handleDragStart(id)}
+                  onDragOver={handleDragOver}
+                  onDrop={() => handleDrop(id)}
+                  style={{
+                    position: "relative",
+                    cursor: "grab",
+                    opacity: draggedId === id ? 0.4 : 1,
+                  }}
+                >
+                  <img
+                    src={photo.public_url}
+                    alt={`Preview position ${i + 1}`}
+                    style={{
+                      width: "100%",
+                      aspectRatio: "1 / 1",
+                      objectFit: "cover",
+                      display: "block",
+                      background: "var(--surface)",
+                    }}
+                  />
+                  {isCandidate && (
+                    <span
+                      style={{
+                        position: "absolute",
+                        top: "4px",
+                        left: "4px",
+                        background: "var(--accent)",
+                        color: "var(--paper)",
+                        borderRadius: "50%",
+                        width: "20px",
+                        height: "20px",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        fontSize: "12px",
+                      }}
+                    >
+                      {i + 1}
+                    </span>
+                  )}
+                  {reason && (
+                    <p className="quote label-block" style={{ fontSize: "14px", padding: "0 4px" }}>
+                      {reason}
+                    </p>
+                  )}
+                  {isCandidate && (
+                    <div className="label-block" style={{ padding: "0 4px" }}>
+                      <CaptionWriter analysis={photo.analysis as Record<string, unknown>} />
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          {getLeftOutSlots().length > 0 && (
+            <div className="content-block">
+              <h2 style={{ fontSize: "18px" }}>Not in this preview</h2>
+              <div
+                className="content-block"
+                style={{
+                  border: "1px dashed var(--hairline)",
+                  padding: "8px",
+                }}
+              >
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(3, 1fr)",
+                    gap: "2px",
+                  }}
+                >
+                  {getLeftOutSlots().map((slot) => (
+                    <div
+                      key={slot.photo.id}
+                      style={{ position: "relative", opacity: 0.45 }}
+                      title={slot.reason}
+                    >
+                      <img
+                        src={slot.photo.public_url}
+                        alt={`Candidate ${slot.photo.id}`}
+                        style={{
+                          width: "100%",
+                          aspectRatio: "1 / 1",
+                          objectFit: "cover",
+                          display: "block",
+                          background: "var(--surface)",
+                        }}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
-      </div>
+      )}
 
       <div className="section-block">
         <button onClick={handleFixMyFeed} disabled={loading} className="btn-primary">
