@@ -162,7 +162,7 @@ export default function SuggestEdits({ photoId, publicUrl, analysis, primary }: 
         disabled={loading}
         className={primary ? "btn-primary" : "link"}
       >
-        {loading ? "Suggesting edits…" : "Suggest edits"}
+        {loading ? "Suggesting edits…" : "Filters"}
       </button>
       {error && <p className="text-secondary label-block">{error}</p>}
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
+import CaptionWriter from "@/components/CaptionWriter";
 import SuggestEdits from "@/components/SuggestEdits";
 import {
   fetchNextPostRecommendation,
@@ -57,7 +57,7 @@ export default function HomePage() {
             style={{
               display: "block",
               margin: "0 auto",
-              maxWidth: "420px",
+              maxWidth: "320px",
               width: "100%",
               background: "var(--surface)",
             }}
@@ -80,21 +80,13 @@ export default function HomePage() {
             </p>
           </div>
 
-          <div className="content-block">
+          <div className="content-block" style={{ display: "flex", gap: "24px" }}>
             <SuggestEdits
               photoId={chosenPhoto.id}
               publicUrl={chosenPhoto.public_url}
               analysis={chosenPhoto.analysis}
             />
-          </div>
-
-          <div
-            className="hairline-top section-block"
-            style={{ paddingTop: "24px", display: "flex", gap: "24px" }}
-          >
-            <Link href="/upload" className="link">
-              Upload photos
-            </Link>
+            <CaptionWriter analysis={chosenPhoto.analysis} />
           </div>
         </div>
       )}
@@ -103,14 +95,6 @@ export default function HomePage() {
         <div>
           <p className="label">Why</p>
           <p className="headline prose label-block">{recommendation.reason}</p>
-          <div
-            className="hairline-top section-block"
-            style={{ paddingTop: "24px", display: "flex", gap: "24px" }}
-          >
-            <Link href="/upload" className="link">
-              Upload photos
-            </Link>
-          </div>
         </div>
       )}
     </div>

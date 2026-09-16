@@ -10,14 +10,14 @@ const INSTRUCTIONS = `
 
 Instructions:
 1. Pick the single best candidate by reasoning specifically about how it would sit next to the 3 most recent posts listed above (grid_position 1 is the most recent) — consider color, tone, and composition contrast or repetition with those actual neighbors, not just the general aesthetic profile.
-2. Return a one-sentence "why" explaining the choice in plain, specific language that can reference the actual recent posts (e.g. "your last post was a close-up portrait, this adds environmental space") — not generic praise.
+2. Return a "why" that is ONE short, punchy sentence — under 15 words. State the core reason plainly and stop; no extra clauses, no stacked reasoning, not a full explanation. Still specific to the actual recent posts, not generic praise.
 3. If none of the candidates are a good fit next to these recent posts, say so explicitly instead of forcing a pick.
 
 Return ONLY valid JSON in this exact shape, with no other text before or after it:
 {
   "recommend": true or false,
   "photo_id": "the id of the chosen photo as a string, or null if recommend is false",
-  "why": "one-sentence specific reason for the choice, or empty string if recommend is false",
+  "why": "one short sentence, under 15 words, or empty string if recommend is false",
   "reason": "null if recommend is true, otherwise a one-sentence explanation of why nothing fits"
 }`;
 

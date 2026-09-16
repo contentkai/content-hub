@@ -105,7 +105,7 @@ export default function CaptionWriter({ analysis, limit, primary, autoGenerate }
         disabled={loading}
         className={primary ? "btn-primary" : "link"}
       >
-        {loading ? "Writing…" : "Write a caption"}
+        {loading ? "Writing…" : "Caption"}
       </button>
       {error && <p className="text-secondary label-block">{error}</p>}
       {captions && (
