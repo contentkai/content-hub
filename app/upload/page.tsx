@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { regenerateAestheticProfile } from "@/lib/regenerateAestheticProfile";
+import { uploadAndAnalyzePhoto } from "@/lib/uploadAndAnalyzePhoto";
+import PhotoBatchPreview from "@/components/PhotoBatchPreview";
 
 type Photo = {
   id: number;
@@ -15,10 +17,11 @@ type Photo = {
 };
 
 export default function UploadPage() {
-  const [file, setFile] = useState<File | null>(null);
+  const [files, setFiles] = useState<File[]>([]);
   const [source, setSource] = useState<"existing_feed" | "new_candidate">("existing_feed");
   const [existingCaption, setExistingCaption] = useState("");
   const [uploading, setUploading] = useState(false);
+  const [progress, setProgress] = useState<{ current: number; total: number } | null>(null);
   const [error, setError] = useState("");
   const [photos, setPhotos] = useState<Photo[]>([]);
 
@@ -39,96 +42,35 @@ export default function UploadPage() {
   }, []);
 
   async function handleUpload() {
-    if (!file) return;
+    if (files.length === 0) return;
     setUploading(true);
     setError("");
+    setProgress({ current: 0, total: files.length });
 
-    const storagePath = `${Date.now()}-${file.name}`;
+    const errors: string[] = [];
+    let anyExistingFeed = false;
 
-    const { error: uploadError } = await supabase.storage
-      .from("photos")
-      .upload(storagePath, file);
-
-    if (uploadError) {
-      setError(uploadError.message);
-      setUploading(false);
-      return;
+    for (let i = 0; i < files.length; i++) {
+      setProgress({ current: i + 1, total: files.length });
+      try {
+        await uploadAndAnalyzePhoto(files[i], source, source === "existing_feed" ? existingCaption : null);
+        if (source === "existing_feed") anyExistingFeed = true;
+      } catch (err) {
+        errors.push(`${files[i].name}: ${err instanceof Error ? err.message : String(err)}`);
+      }
     }
 
-    const { data: publicUrlData } = supabase.storage
-      .from("photos")
-      .getPublicUrl(storagePath);
-
-    // The shift-existing-rows-up + insert-at-position-1 sequence has to happen atomically —
-    // doing it as separate client-side reads/updates (the old approach) races against any
-    // other upload happening around the same time, since each call reads a snapshot of
-    // grid_position before the other's shift has committed. insert_existing_feed_photo runs
-    // both steps inside a single Postgres transaction instead.
-    let insertData: { id: number };
-    if (source === "existing_feed") {
-      const { data, error: insertError } = await supabase.rpc("insert_existing_feed_photo", {
-        p_storage_path: storagePath,
-        p_public_url: publicUrlData.publicUrl,
-        p_existing_caption: existingCaption.trim() !== "" ? existingCaption.trim() : null,
-      });
-      if (insertError) {
-        setError(insertError.message);
-        setUploading(false);
-        return;
-      }
-      insertData = data;
-    } else {
-      const { data, error: insertError } = await supabase
-        .from("photos")
-        .insert({
-          storage_path: storagePath,
-          public_url: publicUrlData.publicUrl,
-          source,
-          grid_position: null,
-          existing_caption: null,
-        })
-        .select()
-        .single();
-      if (insertError) {
-        setError(insertError.message);
-        setUploading(false);
-        return;
-      }
-      insertData = data;
+    if (anyExistingFeed) {
+      await regenerateAestheticProfile();
     }
 
     await loadPhotos();
-    setFile(null);
+    setFiles([]);
     setExistingCaption("");
+    setProgress(null);
     setUploading(false);
-
-    // Fire off vision analysis and backfill it once it comes back.
-    const formData = new FormData();
-    formData.append("image", file);
-
-    try {
-      const res = await fetch("/api/analyze-image", {
-        method: "POST",
-        body: formData,
-      });
-      const data = await res.json();
-      if (res.ok) {
-        let analysis: Record<string, unknown>;
-        try {
-          analysis = JSON.parse(data.result);
-        } catch {
-          analysis = { error: "invalid JSON from model", raw: data.result };
-        }
-        await supabase.from("photos").update({ analysis }).eq("id", insertData.id);
-        await loadPhotos();
-        if (source === "existing_feed") {
-          await regenerateAestheticProfile();
-        }
-      } else {
-        setError(data.error ?? "Vision analysis failed");
-      }
-    } catch (err) {
-      setError(String(err));
+    if (errors.length > 0) {
+      setError(errors.join("; "));
     }
   }
 
@@ -168,8 +110,11 @@ export default function UploadPage() {
         <input
           type="file"
           accept="image/*"
-          onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+          multiple
+          onChange={(e) => setFiles(Array.from(e.target.files ?? []))}
         />
+
+        <PhotoBatchPreview files={files} />
 
         <div className="content-block" style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
           {sourceOptions.map((opt) => (
@@ -205,8 +150,12 @@ export default function UploadPage() {
         )}
 
         <div className="content-block">
-          <button onClick={handleUpload} disabled={!file || uploading} className="btn-primary">
-            {uploading ? "Uploading…" : "Upload"}
+          <button onClick={handleUpload} disabled={files.length === 0 || uploading} className="btn-primary">
+            {uploading
+              ? `Analyzing ${progress?.current ?? 0} of ${progress?.total ?? 0}…`
+              : files.length > 1
+                ? `Upload ${files.length} photos`
+                : "Upload"}
           </button>
           {error && <p className="text-secondary label-block">{error}</p>}
         </div>

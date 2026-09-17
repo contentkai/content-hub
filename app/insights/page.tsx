@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import { uploadAndAnalyzePhoto } from "@/lib/uploadAndAnalyzePhoto";
+import PhotoBatchPreview from "@/components/PhotoBatchPreview";
 
 type AestheticProfile = {
   tags: string[];
@@ -41,8 +43,9 @@ export default function InsightsPage() {
   const [targetLoading, setTargetLoading] = useState(false);
   const [targetError, setTargetError] = useState("");
 
-  const [inspoFile, setInspoFile] = useState<File | null>(null);
+  const [inspoFiles, setInspoFiles] = useState<File[]>([]);
   const [inspoUploading, setInspoUploading] = useState(false);
+  const [inspoProgress, setInspoProgress] = useState<{ current: number; total: number } | null>(null);
   const [inspoError, setInspoError] = useState("");
 
   const [quiz, setQuiz] = useState<QuizState>({ status: "idle" });
@@ -71,64 +74,27 @@ export default function InsightsPage() {
   }, []);
 
   async function handleUploadInspo() {
-    if (!inspoFile) return;
+    if (inspoFiles.length === 0) return;
     setInspoUploading(true);
     setInspoError("");
+    setInspoProgress({ current: 0, total: inspoFiles.length });
 
-    const storagePath = `${Date.now()}-${inspoFile.name}`;
+    const errors: string[] = [];
 
-    const { error: uploadErr } = await supabase.storage.from("photos").upload(storagePath, inspoFile);
-    if (uploadErr) {
-      setInspoError(uploadErr.message);
-      setInspoUploading(false);
-      return;
-    }
-
-    const { data: publicUrlData } = supabase.storage.from("photos").getPublicUrl(storagePath);
-
-    const { data: insertData, error: insertError } = await supabase
-      .from("photos")
-      .insert({
-        storage_path: storagePath,
-        public_url: publicUrlData.publicUrl,
-        source: "inspo",
-        grid_position: null,
-        existing_caption: null,
-      })
-      .select()
-      .single();
-    if (insertError) {
-      setInspoError(insertError.message);
-      setInspoUploading(false);
-      return;
-    }
-
-    const uploadedFile = inspoFile;
-    setInspoFile(null);
-    setInspoUploading(false);
-
-    const formData = new FormData();
-    formData.append("image", uploadedFile);
-
-    try {
-      const res = await fetch("/api/analyze-image", {
-        method: "POST",
-        body: formData,
-      });
-      const data = await res.json();
-      if (res.ok) {
-        let analysis: Record<string, unknown>;
-        try {
-          analysis = JSON.parse(data.result);
-        } catch {
-          analysis = { error: "invalid JSON from model", raw: data.result };
-        }
-        await supabase.from("photos").update({ analysis }).eq("id", insertData.id);
-      } else {
-        setInspoError(data.error ?? "Vision analysis failed");
+    for (let i = 0; i < inspoFiles.length; i++) {
+      setInspoProgress({ current: i + 1, total: inspoFiles.length });
+      try {
+        await uploadAndAnalyzePhoto(inspoFiles[i], "inspo");
+      } catch (err) {
+        errors.push(`${inspoFiles[i].name}: ${err instanceof Error ? err.message : String(err)}`);
       }
-    } catch (err) {
-      setInspoError(String(err));
+    }
+
+    setInspoFiles([]);
+    setInspoProgress(null);
+    setInspoUploading(false);
+    if (errors.length > 0) {
+      setInspoError(errors.join("; "));
     }
   }
 
@@ -281,10 +247,16 @@ export default function InsightsPage() {
           <input
             type="file"
             accept="image/*"
-            onChange={(e) => setInspoFile(e.target.files?.[0] ?? null)}
+            multiple
+            onChange={(e) => setInspoFiles(Array.from(e.target.files ?? []))}
           />
-          <button onClick={handleUploadInspo} disabled={!inspoFile || inspoUploading} className="link">
-            {inspoUploading ? "Uploading…" : "Upload inspo photo"}
+          <PhotoBatchPreview files={inspoFiles} />
+          <button onClick={handleUploadInspo} disabled={inspoFiles.length === 0 || inspoUploading} className="link">
+            {inspoUploading
+              ? `Analyzing ${inspoProgress?.current ?? 0} of ${inspoProgress?.total ?? 0}…`
+              : inspoFiles.length > 1
+                ? `Upload ${inspoFiles.length} inspo photos`
+                : "Upload inspo photo"}
           </button>
           {inspoError && <p className="text-secondary" style={{ fontSize: "13px" }}>{inspoError}</p>}
         </div>

@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import SwipeCarousel from "@/components/SwipeCarousel";
+import PhotoBatchPreview from "@/components/PhotoBatchPreview";
+import { uploadAndAnalyzePhoto } from "@/lib/uploadAndAnalyzePhoto";
 
 type Photo = {
   id: number;
@@ -34,8 +36,9 @@ export default function CarouselPage() {
   const [error, setError] = useState("");
   const [result, setResult] = useState<CarouselResult | null>(null);
 
-  const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [uploadFiles, setUploadFiles] = useState<File[]>([]);
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<{ current: number; total: number } | null>(null);
   const [uploadError, setUploadError] = useState("");
 
   const [saving, setSaving] = useState(false);
@@ -63,67 +66,29 @@ export default function CarouselPage() {
     loadCandidates();
   }, []);
 
-  async function handleUploadCandidate() {
-    if (!uploadFile) return;
+  async function handleUploadCandidates() {
+    if (uploadFiles.length === 0) return;
     setUploading(true);
     setUploadError("");
+    setUploadProgress({ current: 0, total: uploadFiles.length });
 
-    const storagePath = `${Date.now()}-${uploadFile.name}`;
+    const errors: string[] = [];
 
-    const { error: uploadErr } = await supabase.storage.from("photos").upload(storagePath, uploadFile);
-    if (uploadErr) {
-      setUploadError(uploadErr.message);
-      setUploading(false);
-      return;
-    }
-
-    const { data: publicUrlData } = supabase.storage.from("photos").getPublicUrl(storagePath);
-
-    const { data: insertData, error: insertError } = await supabase
-      .from("photos")
-      .insert({
-        storage_path: storagePath,
-        public_url: publicUrlData.publicUrl,
-        source: "carousel_candidate",
-        grid_position: null,
-        existing_caption: null,
-      })
-      .select()
-      .single();
-    if (insertError) {
-      setUploadError(insertError.message);
-      setUploading(false);
-      return;
+    for (let i = 0; i < uploadFiles.length; i++) {
+      setUploadProgress({ current: i + 1, total: uploadFiles.length });
+      try {
+        await uploadAndAnalyzePhoto(uploadFiles[i], "carousel_candidate");
+      } catch (err) {
+        errors.push(`${uploadFiles[i].name}: ${err instanceof Error ? err.message : String(err)}`);
+      }
     }
 
     await loadCandidates();
-    const uploadedFile = uploadFile;
-    setUploadFile(null);
+    setUploadFiles([]);
+    setUploadProgress(null);
     setUploading(false);
-
-    const formData = new FormData();
-    formData.append("image", uploadedFile);
-
-    try {
-      const res = await fetch("/api/analyze-image", {
-        method: "POST",
-        body: formData,
-      });
-      const data = await res.json();
-      if (res.ok) {
-        let analysis: Record<string, unknown>;
-        try {
-          analysis = JSON.parse(data.result);
-        } catch {
-          analysis = { error: "invalid JSON from model", raw: data.result };
-        }
-        await supabase.from("photos").update({ analysis }).eq("id", insertData.id);
-        await loadCandidates();
-      } else {
-        setUploadError(data.error ?? "Vision analysis failed");
-      }
-    } catch (err) {
-      setUploadError(String(err));
+    if (errors.length > 0) {
+      setUploadError(errors.join("; "));
     }
   }
 
@@ -303,17 +268,23 @@ export default function CarouselPage() {
       <h1>Carousel</h1>
 
       <div className="section-block">
-        <h2>Upload a candidate photo</h2>
+        <h2>Upload candidate photos</h2>
         <div className="content-block">
           <input
             type="file"
             accept="image/*"
-            onChange={(e) => setUploadFile(e.target.files?.[0] ?? null)}
+            multiple
+            onChange={(e) => setUploadFiles(Array.from(e.target.files ?? []))}
           />
         </div>
+        <PhotoBatchPreview files={uploadFiles} />
         <div className="content-block">
-          <button onClick={handleUploadCandidate} disabled={!uploadFile || uploading} className="link">
-            {uploading ? "Uploading…" : "Upload"}
+          <button onClick={handleUploadCandidates} disabled={uploadFiles.length === 0 || uploading} className="link">
+            {uploading
+              ? `Analyzing ${uploadProgress?.current ?? 0} of ${uploadProgress?.total ?? 0}…`
+              : uploadFiles.length > 1
+                ? `Upload ${uploadFiles.length} photos`
+                : "Upload"}
           </button>
           {uploadError && <p className="text-secondary label-block">{uploadError}</p>}
         </div>
