@@ -139,6 +139,11 @@ export default function CarouselPage() {
     });
   }
 
+  function handleToggleSelectAll() {
+    const allSelected = photos.length > 0 && selectedIds.size === photos.length;
+    setSelectedIds(allSelected ? new Set() : new Set(photos.map((p) => p.id)));
+  }
+
   async function handleBuildCarousel() {
     setLoading(true);
     setError("");
@@ -315,7 +320,14 @@ export default function CarouselPage() {
       </div>
 
       <div className="section-block">
-        <h2>Candidate photos</h2>
+        <div style={{ display: "flex", alignItems: "baseline", gap: "16px" }}>
+          <h2>Candidate photos</h2>
+          {photos.length > 0 && (
+            <button onClick={handleToggleSelectAll} className="link">
+              {selectedIds.size === photos.length ? "Clear selection" : "Select all"}
+            </button>
+          )}
+        </div>
         <div
           className="content-block"
           style={{
@@ -324,28 +336,54 @@ export default function CarouselPage() {
             gap: "2px",
           }}
         >
-          {photos.map((photo) => (
-            <label key={photo.id} style={{ position: "relative", cursor: "pointer", display: "block" }}>
-              <input
-                type="checkbox"
-                checked={selectedIds.has(photo.id)}
-                onChange={() => toggleSelected(photo.id)}
-                style={{ position: "absolute", top: "6px", left: "6px", zIndex: 1 }}
-              />
-              <img
-                src={photo.public_url}
-                alt={`Photo ${photo.id}`}
+          {photos.map((photo) => {
+            const isSelected = selectedIds.has(photo.id);
+            return (
+              <div
+                key={photo.id}
+                onClick={() => toggleSelected(photo.id)}
                 style={{
-                  width: "100%",
-                  aspectRatio: "1 / 1",
-                  objectFit: "cover",
-                  display: "block",
-                  background: "var(--surface)",
-                  opacity: selectedIds.has(photo.id) ? 1 : 0.55,
+                  position: "relative",
+                  cursor: "pointer",
+                  boxShadow: isSelected ? "inset 0 0 0 3px var(--accent)" : "none",
                 }}
-              />
-            </label>
-          ))}
+              >
+                <img
+                  src={photo.public_url}
+                  alt={`Photo ${photo.id}`}
+                  style={{
+                    width: "100%",
+                    aspectRatio: "1 / 1",
+                    objectFit: "cover",
+                    display: "block",
+                    background: "var(--surface)",
+                    opacity: isSelected ? 1 : 0.55,
+                  }}
+                />
+                {isSelected && (
+                  <span
+                    style={{
+                      position: "absolute",
+                      top: "6px",
+                      left: "6px",
+                      width: "22px",
+                      height: "22px",
+                      borderRadius: "50%",
+                      background: "var(--accent)",
+                      color: "var(--paper)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="20 6 9 17 4 12" />
+                    </svg>
+                  </span>
+                )}
+              </div>
+            );
+          })}
         </div>
 
         <div className="content-block">

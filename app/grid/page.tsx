@@ -35,6 +35,7 @@ export default function GridPage() {
   const [candidatePhotos, setCandidatePhotos] = useState<Photo[]>([]);
   const [candidateOrder, setCandidateOrder] = useState<string[]>([]);
   const [draggedId, setDraggedId] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   async function loadCandidates() {
     const { data, error: candidatesError } = await supabase
@@ -168,6 +169,18 @@ export default function GridPage() {
     return candidatePhotos.find((p) => String(p.id) === id);
   }
 
+  function toggleSelected(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  }
+
   function handleDragStart(id: string) {
     setDraggedId(id);
   }
@@ -231,6 +244,7 @@ export default function GridPage() {
           {candidateOrder.map((id, i) => {
             const photo = candidateById(id);
             if (!photo) return null;
+            const isSelected = selectedIds.has(id);
 
             return (
               <div
@@ -239,6 +253,7 @@ export default function GridPage() {
                 onDragStart={() => handleDragStart(id)}
                 onDragOver={handleDragOver}
                 onDrop={() => handleDrop(id)}
+                onClick={() => toggleSelected(id)}
                 style={{
                   position: "relative",
                   width: "100%",
@@ -252,6 +267,16 @@ export default function GridPage() {
                   publicUrl={photo.public_url}
                   analysis={photo.analysis as Record<string, unknown>}
                 />
+                {isSelected && (
+                  <div
+                    style={{
+                      position: "absolute",
+                      inset: 0,
+                      boxShadow: "inset 0 0 0 3px var(--accent)",
+                      pointerEvents: "none",
+                    }}
+                  />
+                )}
                 {result && (
                   <span
                     style={{
@@ -288,20 +313,54 @@ export default function GridPage() {
             </div>
           )}
 
-          {photos.map((photo) => (
-            <img
-              key={photo.id}
-              src={photo.public_url}
-              alt={`Grid position ${photo.grid_position}`}
-              style={{
-                width: "100%",
-                aspectRatio: "1 / 1",
-                objectFit: "cover",
-                display: "block",
-                background: "var(--surface)",
-              }}
-            />
-          ))}
+          {photos.map((photo) => {
+            const id = String(photo.id);
+            const isSelected = selectedIds.has(id);
+            return (
+              <div
+                key={photo.id}
+                onClick={() => toggleSelected(id)}
+                style={{
+                  position: "relative",
+                  cursor: "pointer",
+                  boxShadow: isSelected ? "inset 0 0 0 3px var(--accent)" : "none",
+                }}
+              >
+                <img
+                  src={photo.public_url}
+                  alt={`Grid position ${photo.grid_position}`}
+                  style={{
+                    width: "100%",
+                    aspectRatio: "1 / 1",
+                    objectFit: "cover",
+                    display: "block",
+                    background: "var(--surface)",
+                  }}
+                />
+                {isSelected && (
+                  <span
+                    style={{
+                      position: "absolute",
+                      top: "6px",
+                      left: "6px",
+                      width: "22px",
+                      height: "22px",
+                      borderRadius: "50%",
+                      background: "var(--accent)",
+                      color: "var(--paper)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="20 6 9 17 4 12" />
+                    </svg>
+                  </span>
+                )}
+              </div>
+            );
+          })}
         </div>
 
         {getLeftOutSlots().length > 0 && (

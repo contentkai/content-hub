@@ -290,12 +290,27 @@ export default function CandidateEditFrame({ photoId, publicUrl, analysis }: Pro
       />
 
       <div style={{ position: "absolute", top: "4px", right: "4px", display: "flex", gap: "4px" }}>
-        <button onClick={handleCaptionIconTap} title="Captions" style={iconButtonStyle}>
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            handleCaptionIconTap();
+          }}
+          title="Captions"
+          style={iconButtonStyle}
+        >
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
           </svg>
         </button>
-        <button onClick={handleFilterTap} title="Apply suggested edit" disabled={editLoading || saved} style={iconButtonStyle}>
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            handleFilterTap();
+          }}
+          title="Apply suggested edit"
+          disabled={editLoading || saved}
+          style={iconButtonStyle}
+        >
           {editLoading ? (
             <span style={{ fontSize: "10px" }}>…</span>
           ) : (
@@ -332,10 +347,23 @@ export default function CandidateEditFrame({ photoId, publicUrl, analysis }: Pro
 
       {editVariations && stateIndex !== 0 && !saved && !captionsOpen && (
         <>
-          <button onClick={handleRevert} style={{ ...smallTextButtonStyle, position: "absolute", bottom: "4px", left: "4px" }}>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              handleRevert();
+            }}
+            style={{ ...smallTextButtonStyle, position: "absolute", bottom: "4px", left: "4px" }}
+          >
             Revert
           </button>
-          <button onClick={handleSave} disabled={saving} style={{ ...smallTextButtonStyle, position: "absolute", bottom: "4px", right: "4px" }}>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              handleSave();
+            }}
+            disabled={saving}
+            style={{ ...smallTextButtonStyle, position: "absolute", bottom: "4px", right: "4px" }}
+          >
             {saving ? "…" : "Save"}
           </button>
         </>
@@ -378,6 +406,7 @@ export default function CandidateEditFrame({ photoId, publicUrl, analysis }: Pro
 
       {captionsOpen && (
         <div
+          onClick={(e) => e.stopPropagation()}
           style={{
             position: "absolute",
             left: "4px",
@@ -394,7 +423,10 @@ export default function CandidateEditFrame({ photoId, publicUrl, analysis }: Pro
               Caption
             </span>
             <button
-              onClick={() => setCaptionsOpen(false)}
+              onClick={(e) => {
+                e.stopPropagation();
+                setCaptionsOpen(false);
+              }}
               style={{ background: "transparent", border: "none", color: "var(--paper)", cursor: "pointer", fontSize: "13px", padding: 0, lineHeight: 1 }}
             >
               ×
